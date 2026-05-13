@@ -13,6 +13,20 @@ Feature: Permission Management
     Then the response status is 201
     And the response contains field "id"
 
+  # TODO: implement after CSV import pipeline is wired (Runtime Flow 6)
+  # Runtime Flow 6: CSV permission import pipeline
+  @Pending
+  Scenario: Upload a CSV file for permission import
+    When I upload a CSV file for permission import with content:
+      """
+      name,resource,action,description
+      dashboard.view.read,dashboard,read,Read dashboard
+      reports.export.write,reports,write,Export reports
+      """
+    Then the import response status is 202
+    And the import response contains field "importId"
+    And the import response contains field "status"
+
   # TODO: implement after permission domain entity and repository are wired
   @Pending
   Scenario: Retrieve an existing permission
