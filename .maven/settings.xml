@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
+
+  <!--
+    Credentials for GitHub Packages.
+    In CI: GITHUB_TOKEN is injected by GitHub Actions automatically.
+    Locally: set GITHUB_TOKEN in your environment before running Maven
+    (e.g. export GITHUB_TOKEN=<your PAT> or copy .env.local.example to .env.local).
+  -->
+  <servers>
+    <server>
+      <id>github</id>
+      <username>babakmirghafari</username>
+      <password>${env.GITHUB_TOKEN}</password>
+    </server>
+    <server>
+      <id>github-asms-contract</id>
+      <username>babakmirghafari</username>
+      <password>${env.GITHUB_TOKEN}</password>
+    </server>
+  </servers>
+
+  <!-- Block the gitlab-maven repository that is configured globally but unauthorized -->
+  <mirrors>
+    <mirror>
+      <id>block-gitlab</id>
+      <mirrorOf>gitlab-maven</mirrorOf>
+      <name>Block unauthorized gitlab repo</name>
+      <url>https://repo.maven.apache.org/maven2</url>
+    </mirror>
+  </mirrors>
+
+  <activeProfiles/>
+
+</settings>

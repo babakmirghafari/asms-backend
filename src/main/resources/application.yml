@@ -1,0 +1,69 @@
+spring:
+  application:
+    name: asms-backend
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/asms}
+    username: ${SPRING_DATASOURCE_USERNAME:asms}
+    password: ${SPRING_DATASOURCE_PASSWORD:asms}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:10}
+      minimum-idle: ${DB_POOL_MIN_IDLE:2}
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${JWT_JWKS_URI:http://localhost:8080/asms/v1/.well-known/jwks.json}
+
+  threads:
+    virtual:
+      enabled: true
+
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /
+  forward-headers-strategy: framework
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: alpha
+
+asms:
+  auth:
+    # Configurable failed login threshold per ADR-001 (default: 5)
+    max-failed-attempts: ${ASMS_AUTH_MAX_FAILED_ATTEMPTS:5}
+    # Lockout duration in minutes after max failed attempts
+    lockout-duration-minutes: ${ASMS_AUTH_LOCKOUT_DURATION:15}
+    # JWT token expiry in minutes
+    token-expiry-minutes: ${ASMS_AUTH_TOKEN_EXPIRY:60}
+  permission-cache:
+    # Permission cache TTL per ADR-008 (default: 5 minutes)
+    ttl-seconds: ${ASMS_PERMISSION_CACHE_TTL:300}

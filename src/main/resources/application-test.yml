@@ -1,0 +1,33 @@
+# Test profile — used by Testcontainers integration tests
+# Never use H2 — always real PostgreSQL via Testcontainers
+spring:
+  jpa:
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  # OAuth2 resource server is excluded in the test profile via @Profile("!test") on SecurityConfig.
+  # No JWKS URI is needed — TestSecurityConfig permits all requests without authentication.
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+logging:
+  level:
+    root: WARN
+    com.asms: DEBUG
+    org.testcontainers: INFO
+    org.flywaydb: INFO
+
+asms:
+  auth:
+    max-failed-attempts: 3
+    lockout-duration-minutes: 1
+    token-expiry-minutes: 10
+  permission-cache:
+    ttl-seconds: 30

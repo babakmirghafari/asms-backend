@@ -1,0 +1,15 @@
+replicaCount: 3
+
+image:
+  tag: ""  # Always set explicitly in production deploy workflow
+
+env:
+  SPRING_PROFILES_ACTIVE: "prod"
+
+resources:
+  requests:
+    cpu: "500m"
+    memory: "768Mi"
+  limits:
+    cpu: "2000m"
+    memory: "1536Mi"

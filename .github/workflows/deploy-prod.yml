@@ -1,0 +1,48 @@
+name: Deploy to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Docker image tag to deploy (e.g. sha-abc1234)"
+        required: true
+        type: string
+  push:
+    tags:
+      - "v*.*.*"
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  deploy-prod:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Determine image tag
+        id: tag
+        run: |
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${{ inputs.image_tag }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy to production
+        run: |
+          echo "Deploying tag: ${{ steps.tag.outputs.tag }} to production"
+          # TODO: add helm upgrade --install command targeting production cluster
+          # helm upgrade --install asms-backend helm/asms-backend \
+          #   -f helm/asms-backend/values-prod.yaml \
+          #   --set image.tag=${{ steps.tag.outputs.tag }} \
+          #   --namespace asms-prod
+          #   --atomic --timeout 5m

@@ -1,0 +1,24 @@
+# Local development environment — PostgreSQL only.
+# Run the Spring Boot app natively: SPRING_PROFILES_ACTIVE=dev mvn spring-boot:run
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: asms-postgres
+    environment:
+      POSTGRES_DB: asms
+      POSTGRES_USER: asms
+      POSTGRES_PASSWORD: asms
+    ports:
+      - "5432:5432"
+    volumes:
+      - asms-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U asms -d asms"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  asms-postgres-data:

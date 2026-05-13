@@ -1,0 +1,14 @@
+apiVersion: v2
+name: asms-backend
+description: Helm chart for the ASMS Spring Boot 4 backend service
+type: application
+version: 0.1.0
+appVersion: "0.1.0-SNAPSHOT"
+keywords:
+  - asms
+  - iam
+  - security
+  - spring-boot
+maintainers:
+  - name: babakmirghafari
+    url: https://github.com/babakmirghafari
