@@ -66,6 +66,16 @@ public class AuthSteps {
         // TODO: seed test data when auth is wired — create user via API or direct DB insert
     }
 
+    @Given("the user was issued a temporary password {string}")
+    public void theUserWasIssuedATemporaryPassword(String tempPassword) {
+        // TODO: mark user as requiring password change in test DB (first_login_required=true)
+    }
+
+    @Then("the response requires password change")
+    public void theResponseRequiresPasswordChange() {
+        // TODO: implement when auth endpoint returns nextStep=CHANGE_PASSWORD
+    }
+
     @Given("the user has failed login {int} times")
     public void theUserHasFailedLoginTimes(int failedAttempts) {
         // TODO: update user failed_login_attempts counter in test DB

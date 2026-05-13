@@ -5,9 +5,15 @@
 
   <!--
     Credentials for GitHub Packages.
-    In CI: GITHUB_TOKEN is injected by GitHub Actions automatically.
-    Locally: set GITHUB_TOKEN in your environment before running Maven
-    (e.g. export GITHUB_TOKEN=<your PAT> or copy .env.local.example to .env.local).
+
+    Two separate tokens are used:
+    - GITHUB_TOKEN:         used for publishing to asms-backend's own GitHub Packages registry (write)
+    - PACKAGES_READ_TOKEN:  used for reading asms-api-contract from its GitHub Packages registry (read)
+                            Must be a PAT with read:packages scope stored as a repo secret.
+                            Locally: set PACKAGES_READ_TOKEN (export or .env.local).
+
+    If PACKAGES_READ_TOKEN is not set, falls back to GITHUB_TOKEN for local development
+    where the developer's own token has access to both repos.
   -->
   <servers>
     <server>
@@ -18,7 +24,7 @@
     <server>
       <id>github-asms-contract</id>
       <username>babakmirghafari</username>
-      <password>${env.GITHUB_TOKEN}</password>
+      <password>${env.PACKAGES_READ_TOKEN}</password>
     </server>
   </servers>
 

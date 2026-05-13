@@ -14,6 +14,16 @@ Feature: Authentication Flows
     Then the login response status is 200
     And the response requires MFA verification
 
+  # TODO: implement after temp-password / first-login logic is wired
+  # Runtime Flow 2: First login with temporary password
+  @Pending
+  Scenario: First login forces password change
+    Given a user with username "firstlogin@example.com" exists with status "ACTIVE"
+    And the user was issued a temporary password "TempPass456!"
+    When I login with username "firstlogin@example.com" and password "TempPass456!"
+    Then the login response status is 200
+    And the response requires password change
+
   # TODO: implement after account lockout logic is wired
   # Runtime Flow 3: Account lockout after failed attempts
   @Pending

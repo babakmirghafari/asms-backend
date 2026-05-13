@@ -1,6 +1,7 @@
 package com.asms.bdd.steps;
 
 import io.cucumber.java.en.Given;
+import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -36,6 +37,32 @@ public class PermissionSteps {
         } catch (RestClientResponseException ex) {
             commonSteps.setLastStatusCode(ex.getStatusCode().value());
         }
+    }
+
+    @When("I upload a CSV file for permission import with content:")
+    public void iUploadACsvFileForPermissionImportWithContent(String csvContent) {
+        RestClient restClient = commonSteps.getRestClient();
+        try {
+            ResponseEntity<Map> response = restClient.post()
+                .uri("/asms/v1/permissions/import")
+                .contentType(MediaType.parseMediaType("text/csv"))
+                .body(csvContent)
+                .retrieve()
+                .toEntity(Map.class);
+            commonSteps.setLastResponse(response);
+        } catch (RestClientResponseException ex) {
+            commonSteps.setLastStatusCode(ex.getStatusCode().value());
+        }
+    }
+
+    @Then("the import response status is {int}")
+    public void theImportResponseStatusIs(int expectedStatus) {
+        // TODO: assert exact status when CSV import endpoint is implemented
+    }
+
+    @Then("the import response contains field {string}")
+    public void theImportResponseContainsField(String fieldName) {
+        // TODO: assert field presence when CSV import endpoint is implemented
     }
 
     @Given("a permission exists")
