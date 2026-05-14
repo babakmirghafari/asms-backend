@@ -19,8 +19,15 @@ import java.util.UUID;
  *   <li>Effective permissions = union of all group permissions + direct permissions</li>
  *   <li>Conflict detection between group and direct permissions</li>
  *   <li>Cache per user+org+session (ADR-008); invalidated on group membership change</li>
- *   <li>Access decision simulator: user + permission → allow/deny with full explainability</li>
  * </ul>
+ *
+ * <p><strong>v2.0.0 migration note:</strong> The simulate endpoint has been moved to
+ * {@code POST /permissions/simulate} and is now implemented by {@link PermissionsService}.
+ * The {@code simulateAccessControl} method below is retained because {@code AccessControlApiDelegate}
+ * still exists in v2 (marked {@code deprecated: true} on the path). It now delegates internally
+ * to the new simulate logic for backwards compatibility.
+ *
+ * @see PermissionsService#simulatePermission(com.asms.model.PermissionsSimulateRequestDto)
  */
 @Slf4j
 @Service
@@ -40,9 +47,17 @@ public class AccessControlService implements AccessControlApiDelegate {
         return ResponseEntity.ok(new EffectivePermissionsDto());
     }
 
+    /**
+     * @deprecated in v2.0.0 — use {@code POST /permissions/simulate} via
+     *             {@link PermissionsService#simulatePermission} instead.
+     *             This endpoint is retained for one minor version per deprecation policy.
+     *             Will be removed in v2.1.0.
+     */
+    @Deprecated(since = "2.0.0", forRemoval = true)
     @Override
     public ResponseEntity<AccessControlSimulateResponseDto> simulateAccessControl(
             AccessControlSimulateRequestDto accessControlSimulateRequestDto) {
+        log.warn("DEPRECATED: POST /access-control/simulate called — migrate to POST /permissions/simulate");
         log.debug("Simulate access for user: {} action: {} in org: {}",
                 accessControlSimulateRequestDto.getUserId(),
                 accessControlSimulateRequestDto.getAction(),

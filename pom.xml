@@ -28,7 +28,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
     <!-- Contract artifact -->
-    <asms-api-contract.version>1.0.0-SNAPSHOT</asms-api-contract.version>
+    <asms-api-contract.version>2.0.0-SNAPSHOT</asms-api-contract.version>
 
     <!-- Test dependencies -->
     <testcontainers.version>1.21.4</testcontainers.version>
@@ -105,9 +105,12 @@
       <scope>runtime</scope>
     </dependency>
 
+    <!-- Spring Boot 4 Flyway starter — provides FlywayAutoConfiguration
+         (in Spring Boot 4, Flyway autoconfiguration is in spring-boot-starter-flyway,
+         not in spring-boot-autoconfigure; adding flyway-core alone is not enough) -->
     <dependency>
-      <groupId>org.flywaydb</groupId>
-      <artifactId>flyway-core</artifactId>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-flyway</artifactId>
     </dependency>
 
     <dependency>
