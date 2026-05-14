@@ -1,6 +1,5 @@
 package com.asms.service;
 
-import com.asms.api.ActivityLogsApiDelegate;
 import com.asms.model.PagedResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +30,7 @@ import java.util.UUID;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class ActivityLogsService implements ActivityLogsApiDelegate {
+public class ActivityLogsService {
 
     /**
      * Lists user-facing activity log entries with type=ACTIVITY filter pre-applied.
@@ -47,7 +46,6 @@ public class ActivityLogsService implements ActivityLogsApiDelegate {
      * @param fromDate       optional filter — events on or after this timestamp
      * @param toDate         optional filter — events on or before this timestamp
      */
-    @Override
     public ResponseEntity<PagedResponseDto> listActivityLogs(
             UUID organizationId,
             Integer page,

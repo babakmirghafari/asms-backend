@@ -1,6 +1,5 @@
 package com.asms.service;
 
-import com.asms.api.AlertsApiDelegate;
 import com.asms.model.AcknowledgeAlertRequestDto;
 import com.asms.model.AlertDto;
 import com.asms.model.EscalateAlertRequestDto;
@@ -31,9 +30,8 @@ import java.util.UUID;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class AlertsService implements AlertsApiDelegate {
+public class AlertsService {
 
-    @Override
     public ResponseEntity<AlertDto> acknowledgeAlert(
             UUID alertId, AcknowledgeAlertRequestDto acknowledgeAlertRequestDto) {
         log.debug("Acknowledge alert: {} — note: {}", alertId, acknowledgeAlertRequestDto.getNote());
@@ -54,7 +52,6 @@ public class AlertsService implements AlertsApiDelegate {
      * <p>Valid prior statuses: OPEN, ACKNOWLEDGED, INVESTIGATING, ESCALATED.
      * Attempting to resolve an already-resolved or suppressed alert returns HTTP 409.
      */
-    @Override
     public ResponseEntity<AlertDto> resolveAlert(
             UUID alertId, ResolveAlertRequestDto resolveAlertRequestDto) {
         log.debug("Resolve alert: {} — note: {}", alertId, resolveAlertRequestDto.getNote());
@@ -82,7 +79,6 @@ public class AlertsService implements AlertsApiDelegate {
      * <p>Valid prior statuses: OPEN, ACKNOWLEDGED, INVESTIGATING.
      * Attempting to escalate an already-ESCALATED or RESOLVED alert returns HTTP 409.
      */
-    @Override
     public ResponseEntity<AlertDto> escalateAlert(
             UUID alertId, EscalateAlertRequestDto escalateAlertRequestDto) {
         log.debug("Escalate alert: {} — reason: {}, to: {}",
@@ -109,14 +105,12 @@ public class AlertsService implements AlertsApiDelegate {
         return ResponseEntity.ok(new AlertDto());
     }
 
-    @Override
     public ResponseEntity<AlertDto> getAlertById(UUID alertId) {
         log.debug("Get alert: {}", alertId);
         // TODO: validate org access
         return ResponseEntity.ok(new AlertDto());
     }
 
-    @Override
     public ResponseEntity<PagedResponseDto> listAlerts(
             Integer page, Integer size, UUID organizationId, String type, String status) {
         log.debug("List alerts — org: {}, type: {}, status: {}", organizationId, type, status);

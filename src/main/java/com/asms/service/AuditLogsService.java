@@ -1,6 +1,5 @@
 package com.asms.service;
 
-import com.asms.api.AuditLogsApiDelegate;
 import com.asms.model.AuditExportRequestDto;
 import com.asms.model.AuditExportResponseDto;
 import com.asms.model.AuditLogEntryDto;
@@ -23,23 +22,20 @@ import java.util.UUID;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class AuditLogsService implements AuditLogsApiDelegate {
+public class AuditLogsService {
 
-    @Override
     public ResponseEntity<AuditExportResponseDto> getAuditExportStatus(UUID exportId) {
         log.debug("Get audit export status: {}", exportId);
         // TODO: return current status (PENDING/PROCESSING/READY/FAILED) and download URL if READY
         return ResponseEntity.ok(new AuditExportResponseDto());
     }
 
-    @Override
     public ResponseEntity<AuditLogEntryDto> getAuditLogEntryById(UUID entryId) {
         log.debug("Get audit log entry: {}", entryId);
         // TODO: validate org access
         return ResponseEntity.ok(new AuditLogEntryDto());
     }
 
-    @Override
     public ResponseEntity<PagedResponseDto> listAuditLogEntries(
             Integer page, Integer size, UUID organizationId, UUID actorId,
             String action, OffsetDateTime from, OffsetDateTime to) {
@@ -48,7 +44,6 @@ public class AuditLogsService implements AuditLogsApiDelegate {
         return ResponseEntity.ok(new PagedResponseDto());
     }
 
-    @Override
     public ResponseEntity<AuditExportResponseDto> requestAuditExport(
             AuditExportRequestDto auditExportRequestDto) {
         log.debug("Request audit export — org: {}", auditExportRequestDto.getOrganizationId());

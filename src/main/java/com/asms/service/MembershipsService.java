@@ -1,6 +1,5 @@
 package com.asms.service;
 
-import com.asms.api.MembershipsApiDelegate;
 import com.asms.model.CreateMembershipRequestDto;
 import com.asms.model.MembershipDto;
 import com.asms.model.PagedResponseDto;
@@ -20,9 +19,8 @@ import java.util.UUID;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class MembershipsService implements MembershipsApiDelegate {
+public class MembershipsService {
 
-    @Override
     public ResponseEntity<MembershipDto> createMembership(
             CreateMembershipRequestDto createMembershipRequestDto) {
         log.debug("Create membership — user: {} in org: {}",
@@ -33,21 +31,18 @@ public class MembershipsService implements MembershipsApiDelegate {
         return ResponseEntity.status(201).body(new MembershipDto());
     }
 
-    @Override
     public ResponseEntity<Void> deleteMembership(UUID membershipId) {
         log.debug("Delete membership: {}", membershipId);
         // TODO: remove membership; produce audit event
         return ResponseEntity.noContent().build();
     }
 
-    @Override
     public ResponseEntity<MembershipDto> getMembershipById(UUID membershipId) {
         log.debug("Get membership: {}", membershipId);
         // TODO: validate org access
         return ResponseEntity.ok(new MembershipDto());
     }
 
-    @Override
     public ResponseEntity<PagedResponseDto> listMemberships(
             Integer page, Integer size, UUID organizationId, UUID userId) {
         log.debug("List memberships — org: {}, user: {}", organizationId, userId);

@@ -1,6 +1,5 @@
 package com.asms.service;
 
-import com.asms.api.AccessControlApiDelegate;
 import com.asms.model.AccessControlSimulateRequestDto;
 import com.asms.model.AccessControlSimulateResponseDto;
 import com.asms.model.EffectivePermissionsDto;
@@ -32,9 +31,8 @@ import java.util.UUID;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class AccessControlService implements AccessControlApiDelegate {
+public class AccessControlService {
 
-    @Override
     public ResponseEntity<EffectivePermissionsDto> getEffectivePermissions(
             UUID userId, UUID organizationId) {
         log.debug("Compute effective permissions for user: {} in org: {}", userId, organizationId);
@@ -54,7 +52,6 @@ public class AccessControlService implements AccessControlApiDelegate {
      *             Will be removed in v2.1.0.
      */
     @Deprecated(since = "2.0.0", forRemoval = true)
-    @Override
     public ResponseEntity<AccessControlSimulateResponseDto> simulateAccessControl(
             AccessControlSimulateRequestDto accessControlSimulateRequestDto) {
         log.warn("DEPRECATED: POST /access-control/simulate called — migrate to POST /permissions/simulate");

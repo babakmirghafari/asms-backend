@@ -1,6 +1,5 @@
 package com.asms.service;
 
-import com.asms.api.PermissionsApiDelegate;
 import com.asms.domain.PermissionImport;
 import com.asms.domain.PermissionImportStatus;
 import com.asms.model.CreatePermissionRequestDto;
@@ -43,7 +42,7 @@ import java.util.UUID;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class PermissionsService implements PermissionsApiDelegate {
+public class PermissionsService {
 
     /** Import sessions expire after 30 minutes with no commit. */
     private static final int IMPORT_TTL_MINUTES = 30;
@@ -52,7 +51,6 @@ public class PermissionsService implements PermissionsApiDelegate {
 
     // ─── CRUD ────────────────────────────────────────────────────────────────
 
-    @Override
     public ResponseEntity<PermissionDto> createPermission(
             CreatePermissionRequestDto createPermissionRequestDto) {
         log.debug("Create permission: {}", createPermissionRequestDto.getName());
@@ -61,7 +59,6 @@ public class PermissionsService implements PermissionsApiDelegate {
         return ResponseEntity.status(201).body(new PermissionDto());
     }
 
-    @Override
     public ResponseEntity<Void> deletePermission(UUID permissionId) {
         log.debug("Delete permission: {}", permissionId);
         // TODO: only allow delete of DRAFT or DEPRECATED permissions
@@ -70,14 +67,12 @@ public class PermissionsService implements PermissionsApiDelegate {
         return ResponseEntity.noContent().build();
     }
 
-    @Override
     public ResponseEntity<PermissionDto> getPermissionById(UUID permissionId) {
         log.debug("Get permission: {}", permissionId);
         // TODO: load from repository
         return ResponseEntity.ok(new PermissionDto());
     }
 
-    @Override
     public ResponseEntity<PagedResponseDto> listPermissions(
             Integer page, Integer size, UUID organizationId, String status) {
         log.debug("List permissions — org: {}, status: {}", organizationId, status);
@@ -97,7 +92,6 @@ public class PermissionsService implements PermissionsApiDelegate {
      * </pre>
      * Any other transition (e.g. DEPRECATED → ACTIVE) is rejected with HTTP 400.
      */
-    @Override
     public ResponseEntity<PermissionDto> updatePermissionStatus(
             UUID permissionId, UpdatePermissionStatusRequestDto updatePermissionStatusRequestDto) {
         log.debug("Lifecycle transition — permission: {} → target status: {}",
@@ -122,7 +116,6 @@ public class PermissionsService implements PermissionsApiDelegate {
      * The input DTO uses a single {@code permissionName} field instead of the v1
      * {@code resource} + {@code action} pair.
      */
-    @Override
     public ResponseEntity<PermissionsSimulateResponseDto> simulatePermission(
             PermissionsSimulateRequestDto permissionsSimulateRequestDto) {
         log.debug("Simulate permission '{}' for user: {} in org: {}",
@@ -160,7 +153,6 @@ public class PermissionsService implements PermissionsApiDelegate {
      *
      * @return HTTP 200 with importId and validation summary; HTTP 400 if file is invalid
      */
-    @Override
     public ResponseEntity<PermissionImportValidateResponseDto> validatePermissionsImport(
             MultipartFile file, UUID organizationId) {
         log.debug("CSV permission import validate — org: {}, file: {}",
@@ -206,7 +198,6 @@ public class PermissionsService implements PermissionsApiDelegate {
      *   <li>Session expired (expiresAt in the past) → 400</li>
      * </ul>
      */
-    @Override
     public ResponseEntity<PermissionImportCommitResponseDto> commitPermissionsImport(
             PermissionImportCommitRequestDto permissionImportCommitRequestDto) {
         UUID importId = permissionImportCommitRequestDto.getImportId();
@@ -237,7 +228,6 @@ public class PermissionsService implements PermissionsApiDelegate {
      * Returns the full validation and commit report for a previously created import session.
      * Used to review results after commit or to inspect validation errors before committing.
      */
-    @Override
     public ResponseEntity<PermissionImportReportDto> getPermissionsImportReport(UUID importId) {
         log.debug("Get permission import report — importId: {}", importId);
 
