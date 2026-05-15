@@ -1,6 +1,5 @@
 package com.asms.service;
 
-import com.asms.api.StationPoliciesApiDelegate;
 import com.asms.model.CreateStationPolicyRequestDto;
 import com.asms.model.PagedResponseDto;
 import com.asms.model.StationPolicyDto;
@@ -23,9 +22,8 @@ import java.util.UUID;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class StationPoliciesService implements StationPoliciesApiDelegate {
+public class StationPoliciesService {
 
-    @Override
     public ResponseEntity<StationPolicyDto> createStationPolicy(
             CreateStationPolicyRequestDto createStationPolicyRequestDto) {
         log.debug("Create station policy: {}", createStationPolicyRequestDto.getName());
@@ -34,20 +32,17 @@ public class StationPoliciesService implements StationPoliciesApiDelegate {
         return ResponseEntity.status(201).body(new StationPolicyDto());
     }
 
-    @Override
     public ResponseEntity<Void> deleteStationPolicy(UUID policyId) {
         log.debug("Delete station policy: {}", policyId);
         // TODO: produce audit event
         return ResponseEntity.noContent().build();
     }
 
-    @Override
     public ResponseEntity<StationPolicyDto> getStationPolicyById(UUID policyId) {
         log.debug("Get station policy: {}", policyId);
         return ResponseEntity.ok(new StationPolicyDto());
     }
 
-    @Override
     public ResponseEntity<PagedResponseDto> listStationPolicies(
             Integer page, Integer size, UUID userId) {
         log.debug("List station policies — user: {}", userId);
@@ -55,7 +50,6 @@ public class StationPoliciesService implements StationPoliciesApiDelegate {
         return ResponseEntity.ok(new PagedResponseDto());
     }
 
-    @Override
     public ResponseEntity<StationPolicyDto> updateStationPolicy(
             UUID policyId, UpdateStationPolicyRequestDto updateStationPolicyRequestDto) {
         log.debug("Update station policy: {}", policyId);
