@@ -4,6 +4,9 @@ import com.asms.domain.AuditLog;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.time.OffsetDateTime;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -55,13 +58,24 @@ public final class AuditLogSpecifications {
 
     /**
      * Combines all optional filters with AND. Null specifications are skipped.
+     *
+     * <p>Avoids {@code Specification.where(null)} entirely to sidestep the
+     * ambiguous overload between {@code Specification.where(Specification)}
+     * and {@code Specification.where(PredicateSpecification)} in Spring Data 3.x.
+     * Instead, non-null specs are collected into a list and reduced with .and().
+     * If all specs are null, returns a match-all (no predicate added).
      */
+    @SuppressWarnings("unchecked")
     public static Specification<AuditLog> combineAll(Specification<AuditLog>... specs) {
-        Specification<AuditLog> result = Specification.where(null);
-        for (Specification<AuditLog> spec : specs) {
-            if (spec != null) {
-                result = result.and(spec);
-            }
+        List<Specification<AuditLog>> nonNull = Arrays.stream(specs)
+                .filter(Objects::nonNull)
+                .toList();
+        if (nonNull.isEmpty()) {
+            return (root, query, cb) -> cb.conjunction();
+        }
+        Specification<AuditLog> result = nonNull.get(0);
+        for (int i = 1; i < nonNull.size(); i++) {
+            result = result.and(nonNull.get(i));
         }
         return result;
     }
