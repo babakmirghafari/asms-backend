@@ -1,0 +1,71 @@
+package com.asms.domain;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.UUID;
+
+@Entity
+@Table(name = "applications")
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class Application {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id", updatable = false, nullable = false)
+    private UUID id;
+
+    @Column(name = "org_id", nullable = false)
+    private UUID orgId;
+
+    @Column(name = "name", nullable = false)
+    private String name;
+
+    @Column(name = "type", nullable = false)
+    private String type;
+
+    @Column(name = "client_id")
+    private String clientId;
+
+    @Column(name = "client_secret_hash")
+    private String clientSecretHash;
+
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "redirect_uris", columnDefinition = "text[]")
+    private List<String> redirectUris;
+
+    @Column(name = "saml_entity_id")
+    private String samlEntityId;
+
+    @Column(name = "status", nullable = false)
+    private String status;
+
+    @Column(name = "integration_health_status", nullable = false)
+    private String integrationHealthStatus;
+
+    @Column(name = "secret_expires_at")
+    private OffsetDateTime secretExpiresAt;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private OffsetDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private OffsetDateTime updatedAt;
+}

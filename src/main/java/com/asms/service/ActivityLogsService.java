@@ -1,72 +1,81 @@
 package com.asms.service;
 
+import com.asms.domain.AuditLog;
+import com.asms.model.ActivityLogDto;
 import com.asms.model.PagedResponseDto;
+import com.asms.repository.AuditLogRepository;
+import com.asms.repository.AuditLogSpecifications;
+import com.asms.security.TenantContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 
 /**
- * Activity log service implementing {@link ActivityLogsApiDelegate}.
- *
- * <p>Serves a user-facing activity feed backed by the same {@code audit_logs} table
- * as {@link AuditLogsService}, but with a {@code type=ACTIVITY} filter pre-applied
- * at this delegate level. This allows regular users to see their own activity history
- * without exposing the full forensic audit log (which is admin-only).
- *
- * <h3>Backing data</h3>
- * <p>Queries {@code audit_logs} with a fixed filter on activity-type events
- * (e.g. USER_LOGIN_SUCCESS, PERMISSION_EVALUATED, SESSION_CREATED). The result
- * is mapped to {@code ActivityLogDto} which exposes a user-friendly subset of fields.
- *
- * <h3>Security</h3>
- * <p>The {@code organizationId} query parameter must match the JWT claims of the
- * requesting user. Admins may query any organization in their tenant; regular users
- * are restricted to their own activity.
+ * Activity log service — pre-filtered view of audit_logs for user-facing activity feed (AC-3, AC-13).
+ * Backed by audit_logs with action LIKE 'ACTIVITY_%'.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class ActivityLogsService {
 
-    /**
-     * Lists user-facing activity log entries with type=ACTIVITY filter pre-applied.
-     *
-     * <p>Supports pagination and filtering by actor, category, and date range.
-     * All results are org-scoped.
-     *
-     * @param organizationId required — org context (first param per generated delegate)
-     * @param page           zero-based page number
-     * @param size           page size (max 100)
-     * @param actorId        optional filter by actor
-     * @param category       optional filter by activity category
-     * @param fromDate       optional filter — events on or after this timestamp
-     * @param toDate         optional filter — events on or before this timestamp
-     */
+    private final AuditLogRepository auditLogRepository;
+
+    @Transactional(readOnly = true)
     public ResponseEntity<PagedResponseDto> listActivityLogs(
-            UUID organizationId,
-            Integer page,
-            Integer size,
-            UUID actorId,
-            String category,
-            OffsetDateTime fromDate,
-            OffsetDateTime toDate) {
-        log.debug("List activity logs — org: {}, actor: {}, category: {}, from: {}, to: {}",
-                organizationId, actorId, category, fromDate, toDate);
-        // TODO: query audit_logs with filter:
-        //   WHERE org_id = :organizationId
-        //     AND action LIKE 'ACTIVITY_%'   -- or a dedicated type discriminator column
-        //     AND (:actorId IS NULL OR actor_id = :actorId)
-        //     AND (:category IS NULL OR target_type = :category)
-        //     AND (:fromDate IS NULL OR created_at >= :fromDate)
-        //     AND (:toDate IS NULL OR created_at <= :toDate)
-        //   ORDER BY created_at DESC
-        //   OFFSET :page * :size LIMIT :size
-        // TODO: map audit_logs rows → ActivityLogDto (user-friendly fields only)
-        // TODO: return paged response
-        return ResponseEntity.ok(new PagedResponseDto());
+            UUID organizationId, Integer page, Integer size,
+            UUID actorId, String category, OffsetDateTime fromDate, OffsetDateTime toDate) {
+        UUID orgId = organizationId != null ? organizationId : TenantContext.getRequiredOrgId();
+        // Use Specification-based query with ACTIVITY_ prefix filter to avoid
+        // PostgreSQL "cannot determine data type" for null UUID parameters.
+        Page<AuditLog> results = auditLogRepository.findAll(
+                AuditLogSpecifications.combineAll(
+                        AuditLogSpecifications.belongsToOrg(orgId),
+                        AuditLogSpecifications.actionStartsWith("ACTIVITY_"),
+                        AuditLogSpecifications.actorIdEquals(actorId),
+                        AuditLogSpecifications.targetTypeEquals(category),
+                        AuditLogSpecifications.createdAtAfter(fromDate),
+                        AuditLogSpecifications.createdAtBefore(toDate)),
+                PageRequest.of(page != null ? page : 0, size != null ? size : 20));
+        return ResponseEntity.ok(buildPage(
+                results.getContent().stream().map(this::toActivityDto).toList(),
+                results.getTotalElements(), results.getNumber(), results.getSize()));
+    }
+
+    /**
+     * Maps domain AuditLog to contract ActivityLogDto.
+     * ActivityLogDto (v2.0.0): id, eventType, category, actorId, actorUsername,
+     * targetType, targetId, targetDisplayName, organizationId, ipAddress,
+     * outcome, summary, timestamp.
+     */
+    private ActivityLogDto toActivityDto(AuditLog a) {
+        ActivityLogDto dto = new ActivityLogDto();
+        dto.setId(a.getId());
+        dto.setOrganizationId(a.getOrgId());
+        dto.setActorId(a.getActorId());
+        dto.setActorUsername(a.getActorUsername());
+        dto.setEventType(a.getAction());
+        dto.setTargetType(a.getTargetType());
+        dto.setTargetId(a.getTargetId());
+        dto.setTimestamp(a.getCreatedAt());
+        return dto;
+    }
+
+    private PagedResponseDto buildPage(List<?> items, long total, int page, int size) {
+        PagedResponseDto dto = new PagedResponseDto();
+        dto.setContent(items.stream().map(i -> (Object) i).toList());
+        dto.setTotalElements(total);
+        dto.setNumber(page);
+        dto.setSize(size);
+        dto.setTotalPages(size > 0 ? (int) Math.ceil((double) total / size) : 0);
+        return dto;
     }
 }
