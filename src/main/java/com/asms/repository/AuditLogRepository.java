@@ -32,7 +32,7 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
     @Query(value = """
             SELECT * FROM audit_logs
             WHERE org_id = :orgId
-              AND (:actorId IS NULL OR actor_id = :actorId::uuid)
+              AND (:actorId IS NULL OR actor_id = CAST(:actorId AS uuid))
               AND (:action IS NULL OR action = :action)
               AND (:from IS NULL OR created_at >= CAST(:from AS timestamptz))
               AND (:to IS NULL OR created_at <= CAST(:to AS timestamptz))
@@ -41,7 +41,7 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
             countQuery = """
             SELECT COUNT(*) FROM audit_logs
             WHERE org_id = :orgId
-              AND (:actorId IS NULL OR actor_id = :actorId::uuid)
+              AND (:actorId IS NULL OR actor_id = CAST(:actorId AS uuid))
               AND (:action IS NULL OR action = :action)
               AND (:from IS NULL OR created_at >= CAST(:from AS timestamptz))
               AND (:to IS NULL OR created_at <= CAST(:to AS timestamptz))
