@@ -1,6 +1,5 @@
 package com.asms.service;
 
-import com.asms.api.DashboardApiDelegate;
 import com.asms.model.DashboardSummaryDto;
 import com.asms.model.DashboardSummaryDtoOpenAlertsBySeverity;
 import lombok.RequiredArgsConstructor;
@@ -34,9 +33,8 @@ import java.util.UUID;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class DashboardService implements DashboardApiDelegate {
+public class DashboardService {
 
-    @Override
     public ResponseEntity<DashboardSummaryDto> getDashboardSummary(UUID organizationId) {
         log.debug("Get dashboard summary — org: {}", organizationId);
         // TODO: implement dashboard repository with a single COUNT-aggregation query:

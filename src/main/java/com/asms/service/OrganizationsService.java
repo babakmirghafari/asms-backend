@@ -1,6 +1,5 @@
 package com.asms.service;
 
-import com.asms.api.OrganizationsApiDelegate;
 import com.asms.model.CreateOrganizationRequestDto;
 import com.asms.model.OrganizationDto;
 import com.asms.model.PagedResponseDto;
@@ -13,18 +12,20 @@ import org.springframework.stereotype.Service;
 import java.util.UUID;
 
 /**
- * Multi-tenant organization management service implementing {@link OrganizationsApiDelegate}.
+ * Multi-tenant organization management domain service.
  *
  * <p>Per ADR-006: enforces row-level org isolation on all queries.
  * Per ADR-002: organization hierarchy is supported; child orgs inherit parent
  * policies unless overridden.
+ *
+ * <p>This service contains only business logic — no HTTP concerns.
+ * The HTTP adapter is {@code com.asms.handler.OrganizationsHandler}.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class OrganizationsService implements OrganizationsApiDelegate {
+public class OrganizationsService {
 
-    @Override
     public ResponseEntity<OrganizationDto> createOrganization(
             CreateOrganizationRequestDto createOrganizationRequestDto) {
         log.debug("Create organization: {}", createOrganizationRequestDto.getName());
@@ -33,21 +34,18 @@ public class OrganizationsService implements OrganizationsApiDelegate {
         return ResponseEntity.status(201).body(new OrganizationDto());
     }
 
-    @Override
     public ResponseEntity<Void> deleteOrganization(UUID organizationId) {
         log.debug("Delete organization: {}", organizationId);
         // TODO: soft-delete org; produce audit event
         return ResponseEntity.noContent().build();
     }
 
-    @Override
     public ResponseEntity<OrganizationDto> getOrganizationById(UUID organizationId) {
         log.debug("Get organization: {}", organizationId);
         // TODO: validate caller has access to this org
         return ResponseEntity.ok(new OrganizationDto());
     }
 
-    @Override
     public ResponseEntity<PagedResponseDto> listOrganizations(
             Integer page, Integer size, String search) {
         log.debug("List organizations — search: {}", search);
@@ -55,7 +53,6 @@ public class OrganizationsService implements OrganizationsApiDelegate {
         return ResponseEntity.ok(new PagedResponseDto());
     }
 
-    @Override
     public ResponseEntity<OrganizationDto> updateOrganization(
             UUID organizationId, UpdateOrganizationRequestDto updateOrganizationRequestDto) {
         log.debug("Update organization: {}", organizationId);

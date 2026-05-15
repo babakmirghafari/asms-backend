@@ -1,6 +1,5 @@
 package com.asms.service;
 
-import com.asms.api.ApplicationsApiDelegate;
 import com.asms.model.ApplicationCredentialDto;
 import com.asms.model.ApplicationDto;
 import com.asms.model.CreateApplicationRequestDto;
@@ -22,9 +21,8 @@ import java.util.UUID;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class ApplicationsService implements ApplicationsApiDelegate {
+public class ApplicationsService {
 
-    @Override
     public ResponseEntity<ApplicationDto> createApplication(
             CreateApplicationRequestDto createApplicationRequestDto) {
         log.debug("Create application: {}", createApplicationRequestDto.getName());
@@ -33,21 +31,18 @@ public class ApplicationsService implements ApplicationsApiDelegate {
         return ResponseEntity.status(201).body(new ApplicationDto());
     }
 
-    @Override
     public ResponseEntity<Void> deleteApplication(UUID applicationId) {
         log.debug("Delete application: {}", applicationId);
         // TODO: revoke all tokens for this application, produce audit event
         return ResponseEntity.noContent().build();
     }
 
-    @Override
     public ResponseEntity<ApplicationDto> getApplicationById(UUID applicationId) {
         log.debug("Get application: {}", applicationId);
         // TODO: mask sensitive fields (client_secret) in response
         return ResponseEntity.ok(new ApplicationDto());
     }
 
-    @Override
     public ResponseEntity<PagedResponseDto> listApplications(
             Integer page, Integer size, UUID organizationId, String type) {
         log.debug("List applications — org: {}, type: {}", organizationId, type);
@@ -55,7 +50,6 @@ public class ApplicationsService implements ApplicationsApiDelegate {
         return ResponseEntity.ok(new PagedResponseDto());
     }
 
-    @Override
     public ResponseEntity<ApplicationCredentialDto> rotateApplicationSecret(UUID applicationId) {
         log.debug("Rotate secret for application: {}", applicationId);
         // TODO: generate new secret, invalidate old one with grace period (RISK-004 mitigation)
@@ -63,7 +57,6 @@ public class ApplicationsService implements ApplicationsApiDelegate {
         return ResponseEntity.ok(new ApplicationCredentialDto());
     }
 
-    @Override
     public ResponseEntity<ApplicationDto> updateApplication(
             UUID applicationId, UpdateApplicationRequestDto updateApplicationRequestDto) {
         log.debug("Update application: {}", applicationId);
