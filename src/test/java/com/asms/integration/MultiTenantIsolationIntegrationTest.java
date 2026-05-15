@@ -6,6 +6,7 @@ import com.asms.domain.Permission;
 import com.asms.domain.User;
 import com.asms.exception.AccessDeniedException;
 import com.asms.repository.AuditLogRepository;
+import com.asms.repository.AuditLogSpecifications;
 import com.asms.repository.MembershipRepository;
 import com.asms.repository.OrganizationRepository;
 import com.asms.repository.PermissionRepository;
@@ -253,14 +254,17 @@ class MultiTenantIsolationIntegrationTest extends BaseIntegrationTest {
                 .build());
 
         // Query for orgA — must not include orgB's entry
-        Page<com.asms.domain.AuditLog> orgAResults = auditLogRepository.findFiltered(
-                orgA.getId(), null, null, null, null, PageRequest.of(0, 20));
+        // Using JpaSpecificationExecutor to avoid PostgreSQL "cannot determine data type" on null params
+        Page<com.asms.domain.AuditLog> orgAResults = auditLogRepository.findAll(
+                AuditLogSpecifications.belongsToOrg(orgA.getId()),
+                PageRequest.of(0, 20));
         assertThat(orgAResults.getContent()).anyMatch(l -> l.getId().equals(orgALog.getId()));
         assertThat(orgAResults.getContent()).noneMatch(l -> l.getId().equals(orgBLog.getId()));
 
         // Query for orgB — must not include orgA's entry
-        Page<com.asms.domain.AuditLog> orgBResults = auditLogRepository.findFiltered(
-                orgB.getId(), null, null, null, null, PageRequest.of(0, 20));
+        Page<com.asms.domain.AuditLog> orgBResults = auditLogRepository.findAll(
+                AuditLogSpecifications.belongsToOrg(orgB.getId()),
+                PageRequest.of(0, 20));
         assertThat(orgBResults.getContent()).anyMatch(l -> l.getId().equals(orgBLog.getId()));
         assertThat(orgBResults.getContent()).noneMatch(l -> l.getId().equals(orgALog.getId()));
     }

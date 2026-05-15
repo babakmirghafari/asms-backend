@@ -7,6 +7,7 @@ import com.asms.model.AuditExportResponseDto;
 import com.asms.model.AuditLogEntryDto;
 import com.asms.model.PagedResponseDto;
 import com.asms.repository.AuditLogRepository;
+import com.asms.repository.AuditLogSpecifications;
 import com.asms.security.TenantContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -59,8 +60,15 @@ public class AuditLogsService {
             Integer page, Integer size, UUID organizationId, UUID actorId,
             String action, OffsetDateTime from, OffsetDateTime to) {
         UUID orgId = organizationId != null ? organizationId : TenantContext.getRequiredOrgId();
-        Page<AuditLog> results = auditLogRepository.findFiltered(
-                orgId, actorId, action, from, to,
+        // Use Specification-based query to avoid PostgreSQL "cannot determine data type"
+        // for null-typed parameters in prepared statements (UUID columns).
+        Page<AuditLog> results = auditLogRepository.findAll(
+                AuditLogSpecifications.combineAll(
+                        AuditLogSpecifications.belongsToOrg(orgId),
+                        AuditLogSpecifications.actorIdEquals(actorId),
+                        AuditLogSpecifications.actionEquals(action),
+                        AuditLogSpecifications.createdAtAfter(from),
+                        AuditLogSpecifications.createdAtBefore(to)),
                 PageRequest.of(page != null ? page : 0, size != null ? size : 20));
         return ResponseEntity.ok(buildPage(
                 results.getContent().stream().map(this::toDto).toList(),
