@@ -29,24 +29,15 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
             """)
     Optional<AuditLog> findLatestByOrgId(@Param("orgId") UUID orgId);
 
-    @Query(value = """
-            SELECT * FROM audit_logs
-            WHERE org_id = :orgId
-              AND (:actorId IS NULL OR actor_id = CAST(:actorId AS uuid))
-              AND (:action IS NULL OR action = :action)
-              AND (:from IS NULL OR created_at >= CAST(:from AS timestamptz))
-              AND (:to IS NULL OR created_at <= CAST(:to AS timestamptz))
-            ORDER BY created_at DESC
-            """,
-            countQuery = """
-            SELECT COUNT(*) FROM audit_logs
-            WHERE org_id = :orgId
-              AND (:actorId IS NULL OR actor_id = CAST(:actorId AS uuid))
-              AND (:action IS NULL OR action = :action)
-              AND (:from IS NULL OR created_at >= CAST(:from AS timestamptz))
-              AND (:to IS NULL OR created_at <= CAST(:to AS timestamptz))
-            """,
-            nativeQuery = true)
+    @Query("""
+            SELECT a FROM AuditLog a
+            WHERE a.orgId = :orgId
+              AND (:actorId IS NULL OR a.actorId = :actorId)
+              AND (:action IS NULL OR a.action = :action)
+              AND (:from IS NULL OR a.createdAt >= :from)
+              AND (:to IS NULL OR a.createdAt <= :to)
+            ORDER BY a.createdAt DESC
+            """)
     Page<AuditLog> findFiltered(@Param("orgId") UUID orgId,
                                  @Param("actorId") UUID actorId,
                                  @Param("action") String action,
