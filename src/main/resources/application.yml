@@ -65,6 +65,14 @@ asms:
     lockout-duration-minutes: ${ASMS_AUTH_LOCKOUT_DURATION:15}
     # JWT token expiry in minutes
     token-expiry-minutes: ${ASMS_AUTH_TOKEN_EXPIRY:60}
+  security:
+    jwt:
+      secret: ${JWT_SECRET:change-me-in-production-min-32-chars-long}
+      expiration-minutes: ${JWT_EXPIRY_MINUTES:60}
+    max-failed-attempts: ${ASMS_AUTH_MAX_FAILED_ATTEMPTS:5}
+    lockout-duration-minutes: ${ASMS_AUTH_LOCKOUT_DURATION:30}
+  mfa:
+    redirect-url: ${MFA_REDIRECT_URL:http://localhost:4200/mfa-verify}
   permission-cache:
     # Permission cache TTL per ADR-008 (default: 5 minutes)
     ttl-seconds: ${ASMS_PERMISSION_CACHE_TTL:300}

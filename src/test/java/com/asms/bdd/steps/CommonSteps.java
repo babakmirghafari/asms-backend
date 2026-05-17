@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Common Cucumber step definitions shared across all feature files.
  *
- * <p>Uses Spring's RestClient — fully compatible with Java 25 (no Groovy/REST Assured dependencies).
+ * <p>Uses Spring's RestClient — fully compatible with Java 25 (no Groovy/REST Assured).
  */
 public class CommonSteps {
 
@@ -63,24 +63,52 @@ public class CommonSteps {
     @Then("the response status is {int}")
     public void theResponseStatusIs(int expectedStatus) {
         assertThat(lastStatusCode)
-            .as("Expected HTTP status %d but got %d. "
-                + "Note: secured endpoints return 401/403 without valid credentials "
-                + "— wire auth in BDD tests to verify %d responses.", expectedStatus, lastStatusCode, expectedStatus)
+            .as("Expected HTTP %d but got %d", expectedStatus, lastStatusCode)
             .isEqualTo(expectedStatus);
     }
 
     @Then("the response contains field {string}")
     public void theResponseContainsField(String fieldName) {
         assertThat(lastResponse)
-            .as("No response available — endpoint may have returned an error status")
+            .as("No response body available")
             .isNotNull();
         assertThat(lastResponse.getBody())
-            .as("Response body is null — check endpoint and authentication")
+            .as("Response body is null")
             .isNotNull();
-        assertThat(lastResponse.getBody().get(fieldName))
-            .as("Expected field '%s' in response body", fieldName)
-            .isNotNull();
+        assertThat(lastResponse.getBody())
+            .as("Expected field '%s' in response", fieldName)
+            .containsKey(fieldName);
     }
+
+    @Then("the field {string} equals {string}")
+    public void theFieldEquals(String fieldName, String expectedValue) {
+        assertThat(lastResponse).isNotNull();
+        assertThat(lastResponse.getBody()).isNotNull();
+        Object actual = lastResponse.getBody().get(fieldName);
+        assertThat(actual)
+            .as("Field '%s': expected '%s' but got '%s'", fieldName, expectedValue, actual)
+            .isNotNull();
+        assertThat(actual.toString())
+            .as("Field '%s'", fieldName)
+            .isEqualToIgnoringCase(expectedValue);
+    }
+
+    @Then("the field {string} contains {string}")
+    @SuppressWarnings("unchecked")
+    public void theFieldContains(String fieldName, String key) {
+        assertThat(lastResponse).isNotNull();
+        assertThat(lastResponse.getBody()).isNotNull();
+        Object value = lastResponse.getBody().get(fieldName);
+        assertThat(value)
+            .as("Field '%s' is null or missing", fieldName)
+            .isNotNull();
+        assertThat(value).isInstanceOf(Map.class);
+        assertThat(((Map<?, ?>) value).containsKey(key))
+            .as("Expected key '%s' in field '%s'", key, fieldName)
+            .isTrue();
+    }
+
+    // ─── package-private accessors for step classes ─────────────────────────
 
     public void setLastResponse(ResponseEntity<Map> response) {
         this.lastResponse = response;
@@ -97,7 +125,23 @@ public class CommonSteps {
         return lastResponse;
     }
 
+    public int getLastStatusCode() {
+        return lastStatusCode;
+    }
+
     public RestClient getRestClient() {
         return restClient;
+    }
+
+    public RestClient getRestClientForTenant(java.util.UUID orgId, java.util.UUID userId) {
+        return RestClient.builder()
+            .baseUrl("http://localhost:" + serverPort)
+            .defaultHeader("X-Test-Org-Id", orgId.toString())
+            .defaultHeader("X-Test-User-Id", userId.toString())
+            .build();
+    }
+
+    public int getServerPort() {
+        return serverPort;
     }
 }

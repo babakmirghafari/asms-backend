@@ -1,11 +1,10 @@
 package com.asms.service;
 
+import com.asms.constant.AuditActions;
 import com.asms.domain.User;
 import com.asms.exception.ResourceNotFoundException;
 import com.asms.model.CreateUserRequestDto;
-import com.asms.model.PagedResponseDto;
 import com.asms.model.UpdateUserRequestDto;
-import com.asms.model.UserDto;
 import com.asms.model.UserStatusUpdateRequestDto;
 import com.asms.repository.UserRepository;
 import com.asms.security.TenantContext;
@@ -13,16 +12,17 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
-import java.util.List;
 import java.util.UUID;
 
 /**
  * User lifecycle management service (AC-3, AC-12, AC-13).
+ *
+ * <p>Returns domain entities — never {@code ResponseEntity}. HTTP wrapping is done
+ * in {@link com.asms.handler.UsersHandler}.
  *
  * <p>All list queries are org-scoped via the memberships table (ADR-006 / RISK-002).
  * Every write produces an audit event with before/after state (ADR-009).
@@ -36,7 +36,7 @@ public class UsersService {
     private final AuditService auditService;
 
     @Transactional
-    public ResponseEntity<UserDto> createUser(CreateUserRequestDto req) {
+    public User createUser(CreateUserRequestDto req) {
         log.debug("Create user: {}", req.getUsername());
         User user = User.builder()
                 .username(req.getUsername())
@@ -44,7 +44,7 @@ public class UsersService {
                 .firstName(req.getFirstName())
                 .lastName(req.getLastName())
                 .phoneNumber(req.getPhoneNumber())
-                .status("PENDING_ACTIVATION")
+                .status("INACTIVE")
                 .forcePasswordChange(true)
                 .mfaEnabled(false)
                 .failedLoginAttempts(0)
@@ -52,56 +52,52 @@ public class UsersService {
                 .updatedAt(OffsetDateTime.now())
                 .build();
         User saved = userRepository.save(user);
-        auditService.recordInfo("USER", saved.getId(), "USER_CREATED", null, toDto(saved));
-        return ResponseEntity.status(201).body(toDto(saved));
+        auditService.recordInfo("USER", saved.getId(), AuditActions.USER_CREATED, null, saved);
+        return saved;
     }
 
     @Transactional
-    public ResponseEntity<Void> deleteUser(UUID userId) {
+    public void deleteUser(UUID userId) {
         User user = loadUser(userId);
-        UserDto before = toDto(user);
+        User before = copyForAudit(user);
         user.setStatus("DELETED");
         user.setUpdatedAt(OffsetDateTime.now());
         userRepository.save(user);
-        auditService.recordInfo("USER", userId, "USER_DELETED", before, toDto(user));
-        return ResponseEntity.noContent().build();
+        auditService.recordInfo("USER", userId, AuditActions.USER_DELETED, before, null);
     }
 
     @Transactional(readOnly = true)
-    public ResponseEntity<UserDto> getUserById(UUID userId) {
-        return ResponseEntity.ok(toDto(loadUser(userId)));
+    public User getUserById(UUID userId) {
+        return loadUser(userId);
     }
 
     @Transactional(readOnly = true)
-    public ResponseEntity<PagedResponseDto> listUsers(
+    public Page<User> listUsers(
             Integer page, Integer size, String sort, String search, UUID organizationId) {
         // AC-13: org scope — use param if provided, otherwise TenantContext
         UUID orgId = organizationId != null ? organizationId : TenantContext.getOrgId();
-        Page<User> results = userRepository.findAllByOrgId(
+        return userRepository.findAllByOrgId(
                 orgId, search, PageRequest.of(page != null ? page : 0, size != null ? size : 20));
-        return ResponseEntity.ok(buildPage(
-                results.getContent().stream().map(this::toDto).toList(),
-                results.getTotalElements(), results.getNumber(), results.getSize()));
     }
 
     @Transactional
-    public ResponseEntity<UserDto> updateUser(UUID userId, UpdateUserRequestDto req) {
+    public User updateUser(UUID userId, UpdateUserRequestDto req) {
         User user = loadUser(userId);
-        UserDto before = toDto(user);
+        User before = copyForAudit(user);
         if (req.getFirstName() != null)   user.setFirstName(req.getFirstName());
         if (req.getLastName() != null)    user.setLastName(req.getLastName());
         if (req.getEmail() != null)       user.setEmail(req.getEmail());
         if (req.getPhoneNumber() != null) user.setPhoneNumber(req.getPhoneNumber());
         user.setUpdatedAt(OffsetDateTime.now());
         User saved = userRepository.save(user);
-        auditService.recordInfo("USER", userId, "USER_UPDATED", before, toDto(saved));
-        return ResponseEntity.ok(toDto(saved));
+        auditService.recordInfo("USER", userId, AuditActions.USER_UPDATED, before, saved);
+        return saved;
     }
 
     @Transactional
-    public ResponseEntity<UserDto> updateUserStatus(UUID userId, UserStatusUpdateRequestDto req) {
+    public User updateUserStatus(UUID userId, UserStatusUpdateRequestDto req) {
         User user = loadUser(userId);
-        UserDto before = toDto(user);
+        User before = copyForAudit(user);
         String newStatus = req.getStatus().getValue();
         user.setStatus(newStatus);
         if ("LOCKED".equals(newStatus)) {
@@ -112,9 +108,11 @@ public class UsersService {
         }
         user.setUpdatedAt(OffsetDateTime.now());
         User saved = userRepository.save(user);
-        auditService.recordInfo("USER", userId, "USER_STATUS_CHANGED", before, toDto(saved));
-        return ResponseEntity.ok(toDto(saved));
+        auditService.recordInfo("USER", userId, AuditActions.USER_STATUS_CHANGED, before, saved);
+        return saved;
     }
+
+    // ─── private helpers ────────────────────────────────────────────────────
 
     private User loadUser(UUID userId) {
         return userRepository.findById(userId)
@@ -122,31 +120,25 @@ public class UsersService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
     }
 
-    private UserDto toDto(User u) {
-        UserDto dto = new UserDto();
-        dto.setId(u.getId());
-        dto.setUsername(u.getUsername());
-        dto.setEmail(u.getEmail());
-        dto.setFirstName(u.getFirstName());
-        dto.setLastName(u.getLastName());
-        dto.setPhoneNumber(u.getPhoneNumber());
-        dto.setStatus(UserDto.StatusEnum.fromValue(u.getStatus()));
-        dto.setMfaEnabled(u.isMfaEnabled());
-        dto.setFailedLoginAttempts(u.getFailedLoginAttempts());
-        dto.setLockedUntil(u.getLockedUntil());
-        dto.setLastLoginAt(u.getLastLoginAt());
-        dto.setCreatedAt(u.getCreatedAt());
-        dto.setUpdatedAt(u.getUpdatedAt());
-        return dto;
-    }
-
-    private PagedResponseDto buildPage(List<?> items, long total, int page, int size) {
-        PagedResponseDto dto = new PagedResponseDto();
-        dto.setContent(items.stream().map(i -> (Object) i).toList());
-        dto.setTotalElements(total);
-        dto.setNumber(page);
-        dto.setSize(size);
-        dto.setTotalPages(size > 0 ? (int) Math.ceil((double) total / size) : 0);
-        return dto;
+    /**
+     * Creates a shallow copy of the user for audit before-state recording.
+     * This avoids the Hibernate proxy issues with dirty tracking on the same entity.
+     */
+    private User copyForAudit(User user) {
+        return User.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .phoneNumber(user.getPhoneNumber())
+                .status(user.getStatus())
+                .mfaEnabled(user.isMfaEnabled())
+                .failedLoginAttempts(user.getFailedLoginAttempts())
+                .lockedUntil(user.getLockedUntil())
+                .lastLoginAt(user.getLastLoginAt())
+                .createdAt(user.getCreatedAt())
+                .updatedAt(user.getUpdatedAt())
+                .build();
     }
 }

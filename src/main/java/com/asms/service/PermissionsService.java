@@ -1,19 +1,18 @@
 package com.asms.service;
 
+import com.asms.constant.AuditActions;
 import com.asms.domain.Permission;
 import com.asms.domain.PermissionImport;
 import com.asms.domain.PermissionImportStatus;
+import com.asms.domain.enums.PermissionStatus;
+import com.asms.exception.AccessDeniedException;
+import com.asms.exception.ConflictException;
 import com.asms.exception.ResourceNotFoundException;
+import com.asms.exception.ValidationException;
 import com.asms.model.CreatePermissionRequestDto;
-import com.asms.model.PagedResponseDto;
-import com.asms.model.PermissionDto;
 import com.asms.model.PermissionImportCommitRequestDto;
-import com.asms.model.PermissionImportCommitResponseDto;
-import com.asms.model.PermissionImportReportDto;
-import com.asms.model.PermissionImportValidateResponseDto;
 import com.asms.model.PermissionImportValidateResponseDtoIssuesInner;
 import com.asms.model.PermissionsSimulateRequestDto;
-import com.asms.model.PermissionsSimulateResponseDto;
 import com.asms.model.UpdatePermissionStatusRequestDto;
 import com.asms.repository.PermissionImportRepository;
 import com.asms.repository.PermissionRepository;
@@ -28,7 +27,6 @@ import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -44,6 +42,9 @@ import java.util.UUID;
 
 /**
  * Permission catalog management service (AC-3, AC-11, AC-12, AC-13).
+ *
+ * <p>Returns domain entities — never {@code ResponseEntity}. HTTP wrapping is done
+ * in {@link com.asms.handler.PermissionsHandler}.
  *
  * <p>Handles:
  * <ul>
@@ -71,13 +72,15 @@ public class PermissionsService {
     // ─── CRUD ────────────────────────────────────────────────────────────────
 
     @Transactional
-    public ResponseEntity<PermissionDto> createPermission(CreatePermissionRequestDto req) {
-        UUID orgId = TenantContext.getRequiredOrgId();
+    public Permission createPermission(CreatePermissionRequestDto req) {
+        UUID orgId = TenantContext.getOrgId();
+        if (orgId == null) orgId = req.getOrganizationId();
+        if (orgId == null) throw new AccessDeniedException("No organization context");
         log.debug("Create permission: {} in org: {}", req.getName(), orgId);
 
-        // Validate naming convention: application.module.action
         if (!req.getName().matches(NAMING_PATTERN)) {
-            return ResponseEntity.badRequest().build();
+            throw new ValidationException("INVALID_PERMISSION_NAME",
+                    "Permission name must follow application.module.action format");
         }
 
         Permission perm = Permission.builder()
@@ -86,128 +89,130 @@ public class PermissionsService {
                 .description(req.getDescription())
                 .resource(req.getResource() != null ? req.getResource() : req.getName().split("\\.")[0])
                 .action(req.getAction() != null ? req.getAction().getValue() : "READ")
-                .status("DRAFT")
+                .status(PermissionStatus.DRAFT.name())
                 .createdAt(OffsetDateTime.now())
                 .updatedAt(OffsetDateTime.now())
                 .build();
 
         Permission saved = permissionRepository.save(perm);
-        auditService.recordInfo("PERMISSION", saved.getId(), "PERMISSION_CREATED", null, toDto(saved));
-        return ResponseEntity.status(201).body(toDto(saved));
+        auditService.recordInfo("PERMISSION", saved.getId(),
+                AuditActions.PERMISSION_CREATED, null, saved);
+        return saved;
     }
 
     @Transactional
-    public ResponseEntity<Void> deletePermission(UUID permissionId) {
+    public void deletePermission(UUID permissionId) {
         Permission perm = loadPermission(permissionId);
-        if ("ACTIVE".equals(perm.getStatus())) {
-            // Cannot delete ACTIVE permissions — must deprecate first
-            return ResponseEntity.status(409).build();
+        if (PermissionStatus.ACTIVE.name().equals(perm.getStatus())) {
+            throw new ConflictException("PERMISSION_ACTIVE",
+                    "Cannot delete an ACTIVE permission — deprecate it first");
         }
-        PermissionDto before = toDto(perm);
         permissionRepository.delete(perm);
-        auditService.recordInfo("PERMISSION", permissionId, "PERMISSION_DELETED", before, null);
-        return ResponseEntity.noContent().build();
+        auditService.recordInfo("PERMISSION", permissionId,
+                AuditActions.PERMISSION_DELETED, perm, null);
     }
 
     @Transactional(readOnly = true)
-    public ResponseEntity<PermissionDto> getPermissionById(UUID permissionId) {
-        return ResponseEntity.ok(toDto(loadPermission(permissionId)));
+    public Permission getPermissionById(UUID permissionId) {
+        return loadPermission(permissionId);
     }
 
     @Transactional(readOnly = true)
-    public ResponseEntity<PagedResponseDto> listPermissions(
+    public Page<Permission> listPermissions(
             Integer page, Integer size, UUID organizationId, String status) {
         UUID orgId = organizationId != null ? organizationId : TenantContext.getRequiredOrgId();
-        Page<Permission> results;
         if (status != null) {
-            results = permissionRepository.findByOrgIdAndStatus(orgId, status,
-                    PageRequest.of(page != null ? page : 0, size != null ? size : 20));
-        } else {
-            results = permissionRepository.findByOrgId(orgId,
+            return permissionRepository.findByOrgIdAndStatus(orgId, status,
                     PageRequest.of(page != null ? page : 0, size != null ? size : 20));
         }
-        return ResponseEntity.ok(buildPage(
-                results.getContent().stream().map(this::toDto).toList(),
-                results.getTotalElements(), results.getNumber(), results.getSize()));
+        return permissionRepository.findByOrgId(orgId,
+                PageRequest.of(page != null ? page : 0, size != null ? size : 20));
     }
 
     // ─── LIFECYCLE TRANSITION ────────────────────────────────────────────────
 
     @Transactional
-    public ResponseEntity<PermissionDto> updatePermissionStatus(
-            UUID permissionId, UpdatePermissionStatusRequestDto req) {
+    public Permission updatePermissionStatus(UUID permissionId, UpdatePermissionStatusRequestDto req) {
         Permission perm = loadPermission(permissionId);
         String currentStatus = perm.getStatus();
         String targetStatus = req.getStatus().getValue();
 
         // Validate allowed transitions: DRAFT→ACTIVE, ACTIVE→DEPRECATED
-        boolean allowed = ("DRAFT".equals(currentStatus) && "ACTIVE".equals(targetStatus))
-                || ("ACTIVE".equals(currentStatus) && "DEPRECATED".equals(targetStatus));
+        boolean allowed = (PermissionStatus.DRAFT.name().equals(currentStatus)
+                    && PermissionStatus.ACTIVE.name().equals(targetStatus))
+                || (PermissionStatus.ACTIVE.name().equals(currentStatus)
+                    && PermissionStatus.DEPRECATED.name().equals(targetStatus));
 
         if (!allowed) {
-            log.warn("Rejected lifecycle transition {} → {} for permission {}", currentStatus, targetStatus, permissionId);
-            return ResponseEntity.badRequest().build();
+            throw new ValidationException("INVALID_LIFECYCLE_TRANSITION",
+                    "Transition from " + currentStatus + " to " + targetStatus + " is not allowed");
         }
 
-        PermissionDto before = toDto(perm);
         perm.setStatus(targetStatus);
         perm.setUpdatedAt(OffsetDateTime.now());
         Permission saved = permissionRepository.save(perm);
-        auditService.recordInfo("PERMISSION", permissionId, "PERMISSION_STATUS_CHANGED", before, toDto(saved));
-        return ResponseEntity.ok(toDto(saved));
+        auditService.recordInfo("PERMISSION", permissionId,
+                AuditActions.PERMISSION_STATUS_CHANGED, null, saved);
+        return saved;
     }
 
     // ─── SIMULATE ────────────────────────────────────────────────────────────
 
+    /**
+     * Result of a permission simulation — carries decision and explanation.
+     */
+    public record SimulateResult(boolean granted, String permissionName, UUID userId,
+                                  UUID organizationId, List<String> appliedPolicies, String reason) {}
+
     @Transactional(readOnly = true)
-    public ResponseEntity<PermissionsSimulateResponseDto> simulatePermission(
-            PermissionsSimulateRequestDto req) {
+    public SimulateResult simulatePermission(PermissionsSimulateRequestDto req) {
         log.debug("Simulate permission '{}' for user: {} in org: {}",
                 req.getPermissionName(), req.getUserId(), req.getOrganizationId());
 
-        // AC-13: org scope check
         UUID callerOrg = TenantContext.getOrgId();
         if (callerOrg != null && !callerOrg.equals(req.getOrganizationId())) {
-            return ResponseEntity.status(403).build();
+            throw new AccessDeniedException("Cannot simulate permissions for a different organization");
         }
 
         EffectivePermissionResult result = effectivePermissionService.compute(
                 req.getUserId(), req.getOrganizationId());
 
         boolean granted = result.hasPermission(req.getPermissionName());
-
-        PermissionsSimulateResponseDto response = new PermissionsSimulateResponseDto();
-        response.setDecision(granted
-                ? PermissionsSimulateResponseDto.DecisionEnum.GRANTED
-                : PermissionsSimulateResponseDto.DecisionEnum.DENIED);
-        response.setPermissionName(req.getPermissionName());
-        response.setUserId(req.getUserId());
-        response.setOrganizationId(req.getOrganizationId());
-        response.setEvaluatedAt(OffsetDateTime.now());
+        List<String> sources = new ArrayList<>();
+        String reason;
 
         if (granted) {
-            // Determine which group(s) grant this permission
-            List<String> sources = new ArrayList<>();
             result.permissionSources().forEach((permId, groups) -> {
                 Permission p = result.permissions().stream()
-                        .filter(pp -> pp.getId().equals(permId) && pp.getName().equals(req.getPermissionName()))
+                        .filter(pp -> pp.getId().equals(permId)
+                                && pp.getName().equals(req.getPermissionName()))
                         .findFirst().orElse(null);
                 if (p != null) sources.addAll(groups);
             });
-            response.setAppliedPolicies(sources);
-            response.setReason("Permission granted via group(s): " + String.join(", ", sources));
+            reason = "Permission granted via group(s): " + String.join(", ", sources);
         } else {
-            response.setReason("No matching active permission found in this user's effective permission set");
+            reason = "No matching active permission found in this user's effective permission set";
         }
 
-        return ResponseEntity.ok(response);
+        return new SimulateResult(granted, req.getPermissionName(), req.getUserId(),
+                req.getOrganizationId(), sources, reason);
     }
 
     // ─── TWO-STEP CSV IMPORT ─────────────────────────────────────────────────
 
+    /**
+     * Result of the CSV validation step.
+     */
+    public record ImportValidateResult(PermissionImport importSession,
+                                        List<PermissionImportValidateResponseDtoIssuesInner> issues) {}
+
+    /**
+     * Result of the CSV commit step.
+     */
+    public record ImportCommitResult(UUID importId, int committed, int skipped, int failed) {}
+
     @Transactional
-    public ResponseEntity<PermissionImportValidateResponseDto> validatePermissionsImport(
-            MultipartFile file, UUID organizationId) {
+    public ImportValidateResult validatePermissionsImport(MultipartFile file, UUID organizationId) {
         UUID orgId = organizationId != null ? organizationId : TenantContext.getRequiredOrgId();
         log.debug("CSV permission import validate — org: {}, file: {}",
                 orgId, file != null ? file.getOriginalFilename() : "null");
@@ -217,20 +222,19 @@ public class PermissionsService {
         String rawCsv = null;
 
         if (file == null || file.isEmpty()) {
-            PermissionImportValidateResponseDtoIssuesInner issue = new PermissionImportValidateResponseDtoIssuesInner();
+            PermissionImportValidateResponseDtoIssuesInner issue =
+                    new PermissionImportValidateResponseDtoIssuesInner();
             issue.setLineNumber(0);
             issue.setMessage("No file uploaded or file is empty");
             issue.setSeverity(PermissionImportValidateResponseDtoIssuesInner.SeverityEnum.ERROR);
             issues.add(issue);
+            errorRows = 1;
         } else {
             try {
                 rawCsv = new String(file.getBytes(), StandardCharsets.UTF_8);
                 try (Reader reader = new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8);
                      CSVParser parser = CSVFormat.DEFAULT.builder()
-                             .setHeader()
-                             .setSkipHeaderRecord(true)
-                             .build()
-                             .parse(reader)) {
+                             .setHeader().setSkipHeaderRecord(true).build().parse(reader)) {
 
                     int rowNum = 1;
                     for (CSVRecord record : parser) {
@@ -241,7 +245,8 @@ public class PermissionsService {
                         } else {
                             boolean hasError = false;
                             for (String msg : rowErrors) {
-                                PermissionImportValidateResponseDtoIssuesInner issue = new PermissionImportValidateResponseDtoIssuesInner();
+                                PermissionImportValidateResponseDtoIssuesInner issue =
+                                        new PermissionImportValidateResponseDtoIssuesInner();
                                 issue.setLineNumber(rowNum);
                                 issue.setMessage(msg);
                                 boolean isError = msg.startsWith("ERROR:");
@@ -258,7 +263,8 @@ public class PermissionsService {
                 }
             } catch (IOException e) {
                 log.error("Failed to parse CSV file", e);
-                PermissionImportValidateResponseDtoIssuesInner issue = new PermissionImportValidateResponseDtoIssuesInner();
+                PermissionImportValidateResponseDtoIssuesInner issue =
+                        new PermissionImportValidateResponseDtoIssuesInner();
                 issue.setLineNumber(0);
                 issue.setMessage("ERROR: Could not parse CSV file: " + e.getMessage());
                 issue.setSeverity(PermissionImportValidateResponseDtoIssuesInner.SeverityEnum.ERROR);
@@ -271,7 +277,6 @@ public class PermissionsService {
                 ? PermissionImportStatus.BLOCKED
                 : PermissionImportStatus.PENDING_COMMIT;
 
-        // Serialise issues for storage (using the inner class directly)
         String issuesJson = null;
         try {
             issuesJson = objectMapper.writeValueAsString(issues);
@@ -295,44 +300,43 @@ public class PermissionsService {
                 .build();
 
         PermissionImport saved = permissionImportRepository.save(importSession);
-
-        PermissionImportValidateResponseDto response = new PermissionImportValidateResponseDto();
-        response.setImportId(saved.getId());
-        response.setTotalRows(totalRows);
-        response.setValidRows(validRows);
-        response.setErrorRows(errorRows);
-        response.setWarningRows(warnRows);
-        response.setStatus(errorRows > 0
-                ? PermissionImportValidateResponseDto.StatusEnum.BLOCKED
-                : PermissionImportValidateResponseDto.StatusEnum.READY);
-        response.setIssues(issues);
-        response.setExpiresAt(saved.getExpiresAt());
-        return ResponseEntity.ok(response);
+        return new ImportValidateResult(saved, issues);
     }
 
     @Transactional
-    public ResponseEntity<PermissionImportCommitResponseDto> commitPermissionsImport(
-            PermissionImportCommitRequestDto req) {
+    public ImportCommitResult commitPermissionsImport(PermissionImportCommitRequestDto req) {
         UUID importId = req.getImportId();
         log.debug("CSV permission import commit — importId: {}", importId);
 
-        PermissionImport importSession = permissionImportRepository
-                .findByIdAndStatusAndExpiresAtAfter(importId, PermissionImportStatus.PENDING_COMMIT, OffsetDateTime.now())
+        PermissionImport importSession = permissionImportRepository.findById(importId)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Import session not found, expired, or already committed: " + importId));
+                        "Import session not found: " + importId));
+
+        if (importSession.getStatus() == PermissionImportStatus.BLOCKED) {
+            throw new ConflictException("IMPORT_BLOCKED",
+                    "Import session is BLOCKED due to validation errors");
+        }
+        if (importSession.getStatus() != PermissionImportStatus.PENDING_COMMIT) {
+            throw new ConflictException("IMPORT_ALREADY_COMMITTED",
+                    "Import session is not in PENDING_COMMIT status");
+        }
+        if (importSession.getExpiresAt().isBefore(OffsetDateTime.now())) {
+            throw new ValidationException("IMPORT_EXPIRED",
+                    "Import session has expired — re-validate the CSV file");
+        }
 
         int committed = 0, skipped = 0, failed = 0;
         UUID orgId = importSession.getOrganizationId();
 
-        // Deserialise stored issues to know which rows have errors
         List<Integer> errorLineNumbers = new ArrayList<>();
         if (importSession.getIssuesJson() != null) {
             try {
-                List<PermissionImportValidateResponseDtoIssuesInner> issues = objectMapper.readValue(
-                        importSession.getIssuesJson(),
-                        new TypeReference<List<PermissionImportValidateResponseDtoIssuesInner>>() {});
-                for (PermissionImportValidateResponseDtoIssuesInner issue : issues) {
-                    if (PermissionImportValidateResponseDtoIssuesInner.SeverityEnum.ERROR.equals(issue.getSeverity())) {
+                List<PermissionImportValidateResponseDtoIssuesInner> storedIssues =
+                        objectMapper.readValue(importSession.getIssuesJson(),
+                                new TypeReference<>() {});
+                for (var issue : storedIssues) {
+                    if (PermissionImportValidateResponseDtoIssuesInner.SeverityEnum.ERROR
+                            .equals(issue.getSeverity())) {
                         errorLineNumbers.add(issue.getLineNumber());
                     }
                 }
@@ -344,10 +348,7 @@ public class PermissionsService {
         if (importSession.getRawCsvContent() != null) {
             try (Reader reader = new java.io.StringReader(importSession.getRawCsvContent());
                  CSVParser parser = CSVFormat.DEFAULT.builder()
-                         .setHeader()
-                         .setSkipHeaderRecord(true)
-                         .build()
-                         .parse(reader)) {
+                         .setHeader().setSkipHeaderRecord(true).build().parse(reader)) {
 
                 int rowNum = 1;
                 for (CSVRecord record : parser) {
@@ -358,7 +359,8 @@ public class PermissionsService {
                             String name = record.get("name");
                             String resource = safeGet(record, "resource");
                             String action = record.get("action");
-                            String description = record.isMapped("description") ? record.get("description") : null;
+                            String description = record.isMapped("description")
+                                    ? record.get("description") : null;
 
                             Permission perm = Permission.builder()
                                     .orgId(orgId)
@@ -366,13 +368,13 @@ public class PermissionsService {
                                     .description(description)
                                     .resource(resource != null ? resource : name.split("\\.")[0])
                                     .action(action)
-                                    .status("ACTIVE")
+                                    .status(PermissionStatus.ACTIVE.name())
                                     .createdAt(OffsetDateTime.now())
                                     .updatedAt(OffsetDateTime.now())
                                     .build();
                             permissionRepository.save(perm);
                             auditService.recordInfo("PERMISSION", perm.getId(),
-                                    "PERMISSION_CREATED_VIA_IMPORT", null, toDto(perm));
+                                    AuditActions.PERMISSION_CREATED_VIA_IMPORT, null, perm);
                             committed++;
                         } catch (Exception e) {
                             log.warn("Failed to commit CSV row {}: {}", rowNum, e.getMessage());
@@ -383,7 +385,8 @@ public class PermissionsService {
                 }
             } catch (IOException e) {
                 log.error("Failed to re-parse stored CSV during commit", e);
-                return ResponseEntity.status(500).build();
+                throw new ValidationException("IMPORT_PARSE_FAILED",
+                        "Failed to re-parse stored CSV content");
             }
         }
 
@@ -394,42 +397,14 @@ public class PermissionsService {
         importSession.setUpdatedAt(OffsetDateTime.now());
         permissionImportRepository.save(importSession);
 
-        PermissionImportCommitResponseDto response = new PermissionImportCommitResponseDto();
-        response.setImportId(importId);
-        response.setCommitted(committed);
-        response.setSkipped(skipped);
-        response.setFailed(failed);
-        return ResponseEntity.status(201).body(response);
+        return new ImportCommitResult(importId, committed, skipped, failed);
     }
 
     @Transactional(readOnly = true)
-    public ResponseEntity<PermissionImportReportDto> getPermissionsImportReport(UUID importId) {
-        PermissionImport importSession = permissionImportRepository.findById(importId)
-                .orElseThrow(() -> new ResourceNotFoundException("Import session not found: " + importId));
-
-        List<PermissionImportValidateResponseDtoIssuesInner> issues = new ArrayList<>();
-        if (importSession.getIssuesJson() != null) {
-            try {
-                issues = objectMapper.readValue(importSession.getIssuesJson(),
-                        new TypeReference<List<PermissionImportValidateResponseDtoIssuesInner>>() {});
-            } catch (Exception e) {
-                log.warn("Could not deserialise stored issues for report", e);
-            }
-        }
-
-        PermissionImportReportDto report = new PermissionImportReportDto();
-        report.setImportId(importId);
-        report.setPhase(importSession.getStatus() == PermissionImportStatus.COMMITTED
-                ? PermissionImportReportDto.PhaseEnum.COMMITTED
-                : PermissionImportReportDto.PhaseEnum.VALIDATED);
-        report.setTotalRows(importSession.getTotalRows() != null ? importSession.getTotalRows() : 0);
-        report.setValidRows(importSession.getValidRows() != null ? importSession.getValidRows() : 0);
-        report.setErrorRows(importSession.getErrorRows() != null ? importSession.getErrorRows() : 0);
-        report.setWarningRows(importSession.getWarningRows() != null ? importSession.getWarningRows() : 0);
-        report.setIssues(issues);
-        report.setCommittedAt(importSession.getCommittedAt());
-        report.setCommitted(importSession.getCommittedCount());
-        return ResponseEntity.ok(report);
+    public PermissionImport getPermissionsImportReport(UUID importId) {
+        return permissionImportRepository.findById(importId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Import session not found: " + importId));
     }
 
     // ─── helpers ─────────────────────────────────────────────────────────────
@@ -438,10 +413,12 @@ public class PermissionsService {
         UUID orgId = TenantContext.getOrgId();
         if (orgId != null) {
             return permissionRepository.findByOrgIdAndId(orgId, permissionId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Permission not found: " + permissionId));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Permission not found: " + permissionId));
         }
         return permissionRepository.findById(permissionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Permission not found: " + permissionId));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Permission not found: " + permissionId));
     }
 
     private List<String> validateCsvRow(CSVRecord record, UUID orgId, int rowNum) {
@@ -457,7 +434,6 @@ public class PermissionsService {
         if (action == null || action.isBlank())
             errors.add("ERROR: Row " + rowNum + ": 'action' is required");
 
-        // Check for duplicate name within org
         if (name != null && !name.isBlank() && permissionRepository.existsByOrgIdAndName(orgId, name)) {
             errors.add("WARNING: Row " + rowNum + ": permission '" + name + "' already exists in org");
         }
@@ -471,29 +447,5 @@ public class PermissionsService {
         } catch (Exception e) {
             return null;
         }
-    }
-
-    private PermissionDto toDto(Permission p) {
-        PermissionDto dto = new PermissionDto();
-        dto.setId(p.getId());
-        dto.setName(p.getName());
-        dto.setDescription(p.getDescription());
-        dto.setResource(p.getResource());
-        dto.setAction(PermissionDto.ActionEnum.fromValue(p.getAction()));
-        dto.setStatus(PermissionDto.StatusEnum.fromValue(p.getStatus()));
-        dto.setOrganizationId(p.getOrgId());
-        dto.setCreatedAt(p.getCreatedAt());
-        dto.setUpdatedAt(p.getUpdatedAt());
-        return dto;
-    }
-
-    private PagedResponseDto buildPage(List<?> items, long total, int page, int size) {
-        PagedResponseDto dto = new PagedResponseDto();
-        dto.setContent(items.stream().map(i -> (Object) i).toList());
-        dto.setTotalElements(total);
-        dto.setNumber(page);
-        dto.setSize(size);
-        dto.setTotalPages(size > 0 ? (int) Math.ceil((double) total / size) : 0);
-        return dto;
     }
 }

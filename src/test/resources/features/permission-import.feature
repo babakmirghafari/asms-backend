@@ -6,8 +6,6 @@ Feature: Two-Step Permission CSV Import
   Background:
     Given the service is running
 
-  # AC-3: validate-then-commit happy path
-  @Pending
   Scenario: Validate a CSV file and commit the import
     When I upload a valid permissions CSV for my organization
     Then the response status is 200
@@ -19,8 +17,6 @@ Feature: Two-Step Permission CSV Import
     And the response contains field "committed"
     And the response contains field "importId"
 
-  # AC-3: validate-then-reject path (BLOCKED status)
-  @Pending
   Scenario: Validate a CSV file with errors — import is BLOCKED
     When I upload a permissions CSV containing invalid rows for my organization
     Then the response status is 200
@@ -28,15 +24,11 @@ Feature: Two-Step Permission CSV Import
     And the field "status" equals "BLOCKED"
     And the response contains field "issues"
 
-  # AC-3: attempt to commit a BLOCKED import
-  @Pending
   Scenario: Cannot commit a BLOCKED import session
     Given a permission import session exists with status "BLOCKED"
     When I commit the import using the BLOCKED importId
     Then the response status is 409
 
-  # AC-3: get import report after commit
-  @Pending
   Scenario: Retrieve the import report after committing
     Given a permission import session has been committed
     When I request the import report by importId
@@ -45,8 +37,6 @@ Feature: Two-Step Permission CSV Import
     And the response contains field "phase"
     And the field "phase" equals "COMMITTED"
 
-  # AC-3: expired importId cannot be committed
-  @Pending
   Scenario: Cannot commit an expired import session
     Given a permission import session exists that has expired
     When I commit the import using the expired importId

@@ -2,10 +2,7 @@ package com.asms.service;
 
 import com.asms.domain.Application;
 import com.asms.exception.ResourceNotFoundException;
-import com.asms.model.ApplicationCredentialDto;
-import com.asms.model.ApplicationDto;
 import com.asms.model.CreateApplicationRequestDto;
-import com.asms.model.PagedResponseDto;
 import com.asms.model.UpdateApplicationRequestDto;
 import com.asms.repository.ApplicationRepository;
 import com.asms.security.TenantContext;
@@ -13,12 +10,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -32,8 +27,14 @@ public class ApplicationsService {
     private final ApplicationRepository applicationRepository;
     private final AuditService auditService;
 
+    /**
+     * Result of a secret rotation — carries the new credential data.
+     */
+    public record RotateSecretResult(UUID applicationId, String credentialType,
+                                      String secret, OffsetDateTime expiresAt) {}
+
     @Transactional
-    public ResponseEntity<ApplicationDto> createApplication(CreateApplicationRequestDto req) {
+    public Application createApplication(CreateApplicationRequestDto req) {
         UUID orgId = req.getOrganizationId() != null ? req.getOrganizationId() : TenantContext.getRequiredOrgId();
         Application app = Application.builder()
                 .orgId(orgId)
@@ -47,39 +48,34 @@ public class ApplicationsService {
                 .updatedAt(OffsetDateTime.now())
                 .build();
         Application saved = applicationRepository.save(app);
-        auditService.recordInfo("APPLICATION", saved.getId(), "APPLICATION_CREATED", null, toDto(saved));
-        return ResponseEntity.status(201).body(toDto(saved));
+        auditService.recordInfo("APPLICATION", saved.getId(), "APPLICATION_CREATED", null, saved);
+        return saved;
     }
 
     @Transactional
-    public ResponseEntity<Void> deleteApplication(UUID applicationId) {
+    public void deleteApplication(UUID applicationId) {
         Application app = loadApp(applicationId);
-        ApplicationDto before = toDto(app);
+        Application before = cloneForAudit(app);
         app.setStatus("DELETED");
         app.setUpdatedAt(OffsetDateTime.now());
         applicationRepository.save(app);
-        auditService.recordInfo("APPLICATION", applicationId, "APPLICATION_DELETED", before, toDto(app));
-        return ResponseEntity.noContent().build();
+        auditService.recordInfo("APPLICATION", applicationId, "APPLICATION_DELETED", before, app);
     }
 
     @Transactional(readOnly = true)
-    public ResponseEntity<ApplicationDto> getApplicationById(UUID applicationId) {
-        return ResponseEntity.ok(toDto(loadApp(applicationId)));
+    public Application getApplicationById(UUID applicationId) {
+        return loadApp(applicationId);
     }
 
     @Transactional(readOnly = true)
-    public ResponseEntity<PagedResponseDto> listApplications(
-            Integer page, Integer size, UUID organizationId, String type) {
+    public Page<Application> listApplications(Integer page, Integer size, UUID organizationId, String type) {
         UUID orgId = organizationId != null ? organizationId : TenantContext.getRequiredOrgId();
-        Page<Application> results = applicationRepository.findFiltered(
+        return applicationRepository.findFiltered(
                 orgId, type, PageRequest.of(page != null ? page : 0, size != null ? size : 20));
-        return ResponseEntity.ok(buildPage(
-                results.getContent().stream().map(this::toDto).toList(),
-                results.getTotalElements(), results.getNumber(), results.getSize()));
     }
 
     @Transactional
-    public ResponseEntity<ApplicationCredentialDto> rotateApplicationSecret(UUID applicationId) {
+    public RotateSecretResult rotateApplicationSecret(UUID applicationId) {
         Application app = loadApp(applicationId);
         String newClientId = UUID.randomUUID().toString();
         app.setClientId(newClientId);
@@ -87,28 +83,20 @@ public class ApplicationsService {
         app.setUpdatedAt(OffsetDateTime.now());
         applicationRepository.save(app);
         auditService.recordWarning("APPLICATION", applicationId, "APPLICATION_SECRET_ROTATED", null, null);
-
-        // ApplicationCredentialDto v2: applicationId, credentialType, secret, expiresAt
-        ApplicationCredentialDto creds = new ApplicationCredentialDto();
-        creds.setApplicationId(applicationId);
-        creds.setCredentialType(ApplicationCredentialDto.CredentialTypeEnum.fromValue(app.getType()));
-        creds.setSecret(newClientId);
-        creds.setExpiresAt(app.getSecretExpiresAt());
-        return ResponseEntity.ok(creds);
+        return new RotateSecretResult(applicationId, app.getType(), newClientId, app.getSecretExpiresAt());
     }
 
     @Transactional
-    public ResponseEntity<ApplicationDto> updateApplication(
-            UUID applicationId, UpdateApplicationRequestDto req) {
+    public Application updateApplication(UUID applicationId, UpdateApplicationRequestDto req) {
         Application app = loadApp(applicationId);
-        ApplicationDto before = toDto(app);
+        Application before = cloneForAudit(app);
         if (req.getName() != null)         app.setName(req.getName());
         if (req.getRedirectUris() != null) app.setRedirectUris(req.getRedirectUris());
         if (req.getStatus() != null)       app.setStatus(req.getStatus().getValue());
         app.setUpdatedAt(OffsetDateTime.now());
         Application saved = applicationRepository.save(app);
-        auditService.recordInfo("APPLICATION", applicationId, "APPLICATION_UPDATED", before, toDto(saved));
-        return ResponseEntity.ok(toDto(saved));
+        auditService.recordInfo("APPLICATION", applicationId, "APPLICATION_UPDATED", before, saved);
+        return saved;
     }
 
     private Application loadApp(UUID applicationId) {
@@ -121,32 +109,13 @@ public class ApplicationsService {
                 .orElseThrow(() -> new ResourceNotFoundException("Application not found: " + applicationId));
     }
 
-    private ApplicationDto toDto(Application a) {
-        ApplicationDto dto = new ApplicationDto();
-        dto.setId(a.getId());
-        dto.setOrganizationId(a.getOrgId());
-        dto.setName(a.getName());
-        dto.setConnectorType(ApplicationDto.ConnectorTypeEnum.fromValue(a.getType()));
-        dto.setClientId(a.getClientId());
-        dto.setRedirectUris(a.getRedirectUris());
-        dto.setSamlEntityId(a.getSamlEntityId());
-        dto.setStatus(ApplicationDto.StatusEnum.fromValue(a.getStatus()));
-        if (a.getIntegrationHealthStatus() != null) {
-            dto.setIntegrationHealthStatus(
-                    ApplicationDto.IntegrationHealthStatusEnum.fromValue(a.getIntegrationHealthStatus()));
-        }
-        dto.setCreatedAt(a.getCreatedAt());
-        dto.setUpdatedAt(a.getUpdatedAt());
-        return dto;
-    }
-
-    private PagedResponseDto buildPage(List<?> items, long total, int page, int size) {
-        PagedResponseDto dto = new PagedResponseDto();
-        dto.setContent(items.stream().map(i -> (Object) i).toList());
-        dto.setTotalElements(total);
-        dto.setNumber(page);
-        dto.setSize(size);
-        dto.setTotalPages(size > 0 ? (int) Math.ceil((double) total / size) : 0);
-        return dto;
+    private Application cloneForAudit(Application a) {
+        return Application.builder()
+                .id(a.getId()).orgId(a.getOrgId()).name(a.getName()).type(a.getType())
+                .clientId(a.getClientId()).clientSecretHash(a.getClientSecretHash())
+                .redirectUris(a.getRedirectUris()).samlEntityId(a.getSamlEntityId())
+                .status(a.getStatus()).integrationHealthStatus(a.getIntegrationHealthStatus())
+                .secretExpiresAt(a.getSecretExpiresAt()).createdAt(a.getCreatedAt()).updatedAt(a.getUpdatedAt())
+                .build();
     }
 }

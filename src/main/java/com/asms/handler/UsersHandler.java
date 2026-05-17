@@ -1,6 +1,8 @@
 package com.asms.handler;
 
 import com.asms.api.UsersApiDelegate;
+import com.asms.domain.User;
+import com.asms.mapper.UserMapper;
 import com.asms.model.CreateUserRequestDto;
 import com.asms.model.PagedResponseDto;
 import com.asms.model.UpdateUserRequestDto;
@@ -9,9 +11,11 @@ import com.asms.model.UserStatusUpdateRequestDto;
 import com.asms.service.UsersService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -21,7 +25,8 @@ import java.util.UUID;
  * Translates HTTP concerns (DTO in/out, response status) and delegates all business
  * logic to {@link UsersService}.
  *
- * <p>No business logic lives here. This class must remain a thin adapter.
+ * <p>No business logic lives here. Entity → DTO conversion is done by
+ * {@link UserMapper}. This class must remain a thin adapter.
  */
 @Slf4j
 @Component
@@ -29,35 +34,56 @@ import java.util.UUID;
 public class UsersHandler implements UsersApiDelegate {
 
     private final UsersService usersService;
+    private final UserMapper userMapper;
 
     @Override
     public ResponseEntity<UserDto> createUser(CreateUserRequestDto createUserRequestDto) {
-        return usersService.createUser(createUserRequestDto);
+        User user = usersService.createUser(createUserRequestDto);
+        return ResponseEntity.status(201).body(userMapper.toDto(user));
     }
 
     @Override
     public ResponseEntity<Void> deleteUser(UUID userId) {
-        return usersService.deleteUser(userId);
+        usersService.deleteUser(userId);
+        return ResponseEntity.noContent().build();
     }
 
     @Override
     public ResponseEntity<UserDto> getUserById(UUID userId) {
-        return usersService.getUserById(userId);
+        return ResponseEntity.ok(userMapper.toDto(usersService.getUserById(userId)));
     }
 
     @Override
     public ResponseEntity<PagedResponseDto> listUsers(
             Integer page, Integer size, String sort, String search, UUID organizationId) {
-        return usersService.listUsers(page, size, sort, search, organizationId);
+        Page<User> users = usersService.listUsers(page, size, sort, search, organizationId);
+        List<UserDto> dtos = users.getContent().stream().map(userMapper::toDto).toList();
+        return ResponseEntity.ok(buildPage(dtos, users.getTotalElements(),
+                users.getNumber(), users.getSize()));
     }
 
     @Override
     public ResponseEntity<UserDto> updateUser(UUID userId, UpdateUserRequestDto updateUserRequestDto) {
-        return usersService.updateUser(userId, updateUserRequestDto);
+        User updated = usersService.updateUser(userId, updateUserRequestDto);
+        return ResponseEntity.ok(userMapper.toDto(updated));
     }
 
     @Override
-    public ResponseEntity<UserDto> updateUserStatus(UUID userId, UserStatusUpdateRequestDto userStatusUpdateRequestDto) {
-        return usersService.updateUserStatus(userId, userStatusUpdateRequestDto);
+    public ResponseEntity<UserDto> updateUserStatus(UUID userId,
+            UserStatusUpdateRequestDto userStatusUpdateRequestDto) {
+        User updated = usersService.updateUserStatus(userId, userStatusUpdateRequestDto);
+        return ResponseEntity.ok(userMapper.toDto(updated));
+    }
+
+    // ─── private helpers ────────────────────────────────────────────────────
+
+    private PagedResponseDto buildPage(List<?> items, long total, int page, int size) {
+        PagedResponseDto dto = new PagedResponseDto();
+        dto.setContent(items.stream().map(i -> (Object) i).toList());
+        dto.setTotalElements(total);
+        dto.setNumber(page);
+        dto.setSize(size);
+        dto.setTotalPages(size > 0 ? (int) Math.ceil((double) total / size) : 0);
+        return dto;
     }
 }

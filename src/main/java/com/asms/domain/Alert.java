@@ -11,6 +11,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -52,6 +54,7 @@ public class Alert {
     private String description;
 
     @Column(name = "metadata", columnDefinition = "JSONB")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String metadata;
 
     @Column(name = "acknowledged_by")

@@ -1,6 +1,8 @@
 package com.asms.handler;
 
 import com.asms.api.SessionsApiDelegate;
+import com.asms.domain.Session;
+import com.asms.mapper.SessionMapper;
 import com.asms.model.PagedResponseDto;
 import com.asms.model.RevokeAllSessionsRequestDto;
 import com.asms.model.RevokeAllSessionsResponseDto;
@@ -9,15 +11,18 @@ import com.asms.model.SessionDto;
 import com.asms.service.SessionsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
  * REST adapter for the Sessions API.
  *
  * <p>Implements {@link SessionsApiDelegate}. Delegates all business logic to {@link SessionsService}.
+ * Entity → DTO conversion is done by {@link SessionMapper}.
  */
 @Slf4j
 @Component
@@ -25,26 +30,47 @@ import java.util.UUID;
 public class SessionsHandler implements SessionsApiDelegate {
 
     private final SessionsService sessionsService;
+    private final SessionMapper sessionMapper;
 
     @Override
     public ResponseEntity<SessionDto> getSessionById(UUID sessionId) {
-        return sessionsService.getSessionById(sessionId);
+        return ResponseEntity.ok(sessionMapper.toDto(sessionsService.getSessionById(sessionId)));
     }
 
     @Override
     public ResponseEntity<PagedResponseDto> listSessions(
             Integer page, Integer size, UUID userId, UUID organizationId, String status) {
-        return sessionsService.listSessions(page, size, userId, organizationId, status);
+        Page<Session> sessions = sessionsService.listSessions(page, size, userId, organizationId, status);
+        List<SessionDto> dtos = sessions.getContent().stream().map(sessionMapper::toDto).toList();
+        return ResponseEntity.ok(buildPage(dtos, sessions.getTotalElements(),
+                sessions.getNumber(), sessions.getSize()));
     }
 
     @Override
     public ResponseEntity<RevokeAllSessionsResponseDto> revokeAllSessions(
             RevokeAllSessionsRequestDto revokeAllSessionsRequestDto) {
-        return sessionsService.revokeAllSessions(revokeAllSessionsRequestDto);
+        int revoked = sessionsService.revokeAllSessions(revokeAllSessionsRequestDto);
+        RevokeAllSessionsResponseDto response = new RevokeAllSessionsResponseDto();
+        response.setRevokedCount(revoked);
+        return ResponseEntity.ok(response);
     }
 
     @Override
-    public ResponseEntity<SessionDto> revokeSession(UUID sessionId, RevokeSessionRequestDto revokeSessionRequestDto) {
-        return sessionsService.revokeSession(sessionId, revokeSessionRequestDto);
+    public ResponseEntity<SessionDto> revokeSession(UUID sessionId,
+            RevokeSessionRequestDto revokeSessionRequestDto) {
+        Session session = sessionsService.revokeSession(sessionId);
+        return ResponseEntity.ok(sessionMapper.toDto(session));
+    }
+
+    // ─── private helpers ────────────────────────────────────────────────────
+
+    private PagedResponseDto buildPage(List<?> items, long total, int page, int size) {
+        PagedResponseDto dto = new PagedResponseDto();
+        dto.setContent(items.stream().map(i -> (Object) i).toList());
+        dto.setTotalElements(total);
+        dto.setNumber(page);
+        dto.setSize(size);
+        dto.setTotalPages(size > 0 ? (int) Math.ceil((double) total / size) : 0);
+        return dto;
     }
 }

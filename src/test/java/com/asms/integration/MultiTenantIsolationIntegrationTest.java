@@ -20,8 +20,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
@@ -138,19 +136,12 @@ class MultiTenantIsolationIntegrationTest extends BaseIntegrationTest {
     void listUsers_orgAContext_returnsOnlyOrgAMembers() {
         TenantContext.set(orgA.getId(), userInOrgA.getId(), userInOrgA.getUsername());
 
-        ResponseEntity<?> response = usersService.listUsers(0, 20, null, null, orgA.getId());
+        Page<User> page = usersService.listUsers(0, 20, null, null, orgA.getId());
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        com.asms.model.PagedResponseDto paged = (com.asms.model.PagedResponseDto) response.getBody();
-        assertThat(paged).isNotNull();
-        assertThat(paged.getTotalElements()).isEqualTo(1L);
-
-        // The returned user must be orgA's user, not orgB's
-        @SuppressWarnings("unchecked")
-        java.util.List<Object> content = (java.util.List<Object>) paged.getContent();
-        assertThat(content).hasSize(1);
-        com.asms.model.UserDto returnedUser = (com.asms.model.UserDto) content.get(0);
-        assertThat(returnedUser.getId()).isEqualTo(userInOrgA.getId());
+        assertThat(page).isNotNull();
+        assertThat(page.getTotalElements()).isEqualTo(1L);
+        assertThat(page.getContent()).hasSize(1);
+        assertThat(page.getContent().get(0).getId()).isEqualTo(userInOrgA.getId());
     }
 
     @Test
@@ -158,17 +149,11 @@ class MultiTenantIsolationIntegrationTest extends BaseIntegrationTest {
     void listUsers_orgBContext_doesNotExposeOrgAMembers() {
         TenantContext.set(orgB.getId(), userInOrgB.getId(), userInOrgB.getUsername());
 
-        ResponseEntity<?> response = usersService.listUsers(0, 20, null, null, orgB.getId());
+        Page<User> page = usersService.listUsers(0, 20, null, null, orgB.getId());
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        com.asms.model.PagedResponseDto paged = (com.asms.model.PagedResponseDto) response.getBody();
-        assertThat(paged).isNotNull();
-
+        assertThat(page).isNotNull();
         // Confirm orgA's user is not in the results
-        @SuppressWarnings("unchecked")
-        java.util.List<Object> content = (java.util.List<Object>) paged.getContent();
-        assertThat(content).noneMatch(u ->
-                ((com.asms.model.UserDto) u).getId().equals(userInOrgA.getId()));
+        assertThat(page.getContent()).noneMatch(u -> u.getId().equals(userInOrgA.getId()));
     }
 
     @Test

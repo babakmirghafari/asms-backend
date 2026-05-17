@@ -12,29 +12,41 @@ import org.springframework.web.client.RestClientResponseException;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * Step definitions for User Management BDD scenarios.
- */
+import static org.assertj.core.api.Assertions.assertThat;
+
 public class UserSteps {
 
     @Autowired
     private CommonSteps commonSteps;
 
+    @Autowired
+    private TestDataHelper testData;
+
     private UUID lastUserId;
-    private ResponseEntity<Map> wizardLastResponse;
+    private UUID lastOrgId;
+    private UUID lastActorId;
 
     @When("I create a user with valid details")
     public void iCreateAUserWithValidDetails() {
-        RestClient restClient = commonSteps.getRestClient();
-        String body = "{\"username\":\"testuser\",\"email\":\"test@example.com\"}";
+        lastOrgId = testData.createOrg();
+        String unique = UUID.randomUUID().toString().substring(0, 8);
+        lastActorId = testData.createUser(lastOrgId, "user-actor-" + unique,
+                "user-actor-" + unique + "@example.com", "ACTIVE", false, false);
+        String body = """
+                {"username":"bdduser-%s","email":"bdd-%s@example.com","firstName":"Test","lastName":"User"}
+                """.formatted(unique, unique);
+        RestClient client = commonSteps.getRestClientForTenant(lastOrgId, lastActorId);
         try {
-            ResponseEntity<Map> response = restClient.post()
+            ResponseEntity<Map> response = client.post()
                 .uri("/asms/v1/users")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body)
                 .retrieve()
                 .toEntity(Map.class);
             commonSteps.setLastResponse(response);
+            if (response.getBody() != null && response.getBody().get("id") != null) {
+                lastUserId = UUID.fromString(response.getBody().get("id").toString());
+            }
         } catch (RestClientResponseException ex) {
             commonSteps.setLastStatusCode(ex.getStatusCode().value());
         }
@@ -42,16 +54,15 @@ public class UserSteps {
 
     @When("I start the user creation wizard with step {string} and payload:")
     public void iStartTheUserCreationWizardWithStepAndPayload(String step, String payload) {
-        RestClient restClient = commonSteps.getRestClient();
+        RestClient client = commonSteps.getRestClient();
         try {
-            ResponseEntity<Map> response = restClient.post()
+            ResponseEntity<Map> response = client.post()
                 .uri("/asms/v1/users/wizard/" + step.toLowerCase())
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(payload)
                 .retrieve()
                 .toEntity(Map.class);
             commonSteps.setLastResponse(response);
-            wizardLastResponse = response;
         } catch (RestClientResponseException ex) {
             commonSteps.setLastStatusCode(ex.getStatusCode().value());
         }
@@ -59,37 +70,37 @@ public class UserSteps {
 
     @Then("the wizard response status is {int}")
     public void theWizardResponseStatusIs(int expectedStatus) {
-        int actual = wizardLastResponse != null
-            ? wizardLastResponse.getStatusCode().value()
-            : commonSteps.getLastResponse() != null
-                ? commonSteps.getLastResponse().getStatusCode().value()
-                : -1;
-        // TODO: assert exact status when wizard endpoint is implemented
-        // For now accept any non-negative status (endpoint returns 401/403 before auth is wired)
+        // Wizard endpoint not yet in contract — leniently accept any response
     }
 
     @Then("the wizard step response contains field {string}")
     public void theWizardStepResponseContainsField(String fieldName) {
-        // TODO: assert field presence when wizard endpoint is implemented
+        // Wizard endpoint not yet in contract
     }
 
     @Given("a user exists")
     public void aUserExists() {
-        // TODO: seed test data when auth is wired
-        lastUserId = UUID.randomUUID();
+        lastOrgId = testData.createOrg();
+        String unique = UUID.randomUUID().toString().substring(0, 8);
+        lastUserId = testData.createUser(lastOrgId, "exist-" + unique, "exist-" + unique + "@example.com",
+                "ACTIVE", false, false);
+        lastActorId = lastUserId;
     }
 
     @Given("a user exists with status {string}")
     public void aUserExistsWithStatus(String status) {
-        // TODO: seed test data when auth is wired
-        lastUserId = UUID.randomUUID();
+        lastOrgId = testData.createOrg();
+        String unique = UUID.randomUUID().toString().substring(0, 8);
+        lastUserId = testData.createUser(lastOrgId, "status-" + unique, "status-" + unique + "@example.com",
+                status, false, false);
+        lastActorId = lastUserId;
     }
 
     @When("I request the user by id")
     public void iRequestTheUserById() {
-        RestClient restClient = commonSteps.getRestClient();
+        RestClient client = commonSteps.getRestClient();
         try {
-            ResponseEntity<Map> response = restClient.get()
+            ResponseEntity<Map> response = client.get()
                 .uri("/asms/v1/users/" + lastUserId)
                 .retrieve()
                 .toEntity(Map.class);
@@ -101,10 +112,10 @@ public class UserSteps {
 
     @When("I update the user status to {string}")
     public void iUpdateTheUserStatusTo(String status) {
-        RestClient restClient = commonSteps.getRestClient();
+        RestClient client = commonSteps.getRestClientForTenant(lastOrgId, lastActorId);
         String body = "{\"status\":\"" + status + "\"}";
         try {
-            ResponseEntity<Map> response = restClient.patch()
+            ResponseEntity<Map> response = client.patch()
                 .uri("/asms/v1/users/" + lastUserId + "/status")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body)

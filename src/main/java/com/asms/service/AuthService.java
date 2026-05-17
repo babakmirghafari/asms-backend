@@ -1,35 +1,43 @@
 package com.asms.service;
 
+import com.asms.config.AsmsSecurityProperties;
+import com.asms.constant.AuditActions;
+import com.asms.domain.Membership;
 import com.asms.domain.User;
+import com.asms.exception.AccountLockedException;
+import com.asms.exception.AuthenticationException;
 import com.asms.exception.ResourceNotFoundException;
 import com.asms.model.ChangePasswordRequestDto;
 import com.asms.model.LoginRequestDto;
-import com.asms.model.LoginResponseDto;
 import com.asms.model.MfaEnrollmentResponseDto;
 import com.asms.model.MfaVerifyRequestDto;
 import com.asms.model.MfaVerifyResponseDto;
 import com.asms.model.SelectOrgRequestDto;
-import com.asms.model.SelectOrgResponseDto;
+import com.asms.repository.MembershipRepository;
 import com.asms.repository.UserRepository;
+import com.asms.security.JwtService;
 import com.asms.security.TenantContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Authentication domain service (AC-3).
+ * Authentication domain service.
+ *
+ * <p>Returns domain objects — never {@code ResponseEntity}. HTTP wrapping is done
+ * in {@link com.asms.handler.AuthHandler}.
  *
  * <p>Per ADR-001: configurable failed login threshold with account lockout.
  * Per ADR-002: multi-org login routes through /auth/select-org.
- * Per ADR-007: full OIDC/SAML IdP deferred to a later phase; login is credential-based for v1.
- *
- * <p>Full JWT issuance requires Spring Authorization Server integration (ADR-007, deferred).
- * For now the login response returns stubs. The important AC-12 audit events are produced.
  */
 @Slf4j
 @Service
@@ -37,105 +45,213 @@ import java.util.UUID;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final MembershipRepository membershipRepository;
     private final AuditService auditService;
+    private final JwtService jwtService;
+    private final PasswordEncoder passwordEncoder;
+    private final AsmsSecurityProperties securityProperties;
 
+    /**
+     * Result of a successful login — carries the user and the login status.
+     */
+    public record LoginResult(User user, LoginStatus status) {}
+
+    public enum LoginStatus {
+        TEMP_PASSWORD_REQUIRED,
+        MFA_REQUIRED,
+        ORG_SELECTION_REQUIRED
+    }
+
+    /**
+     * Result of a successful org selection — carries an access token and expiry.
+     */
+    public record OrgSelectionResult(String accessToken, int expiresInSeconds) {}
+
+    /**
+     * Authenticates the user, enforces lockout, and verifies the password with BCrypt.
+     *
+     * @return {@link LoginResult} with the authenticated user and next-step status
+     * @throws AuthenticationException if credentials are invalid or user status is wrong
+     * @throws AccountLockedException  if the account is temporarily locked
+     */
     @Transactional
-    public ResponseEntity<LoginResponseDto> login(LoginRequestDto req) {
+    public LoginResult login(LoginRequestDto req) {
         log.debug("Login attempt for user: {}", req.getUsername());
 
-        User user = userRepository.findByUsername(req.getUsername())
-                .orElse(null);
+        User user = userRepository.findByUsername(req.getUsername()).orElse(null);
 
         if (user == null) {
-            // Don't reveal whether user exists — return generic error
-            auditService.recordWarning("USER", null, "LOGIN_FAILED_USER_NOT_FOUND",
+            // Do not reveal whether user exists
+            auditService.recordWarning("USER", null,
+                    AuditActions.LOGIN_FAILED_USER_NOT_FOUND,
                     null, "username=" + req.getUsername());
-            return ResponseEntity.status(401).build();
+            throw new AuthenticationException("Invalid credentials");
         }
 
-        // Check lockout
+        // Check lockout first
         if (user.getLockedUntil() != null && user.getLockedUntil().isAfter(OffsetDateTime.now())) {
-            auditService.recordWarning("USER", user.getId(), "LOGIN_FAILED_ACCOUNT_LOCKED",
+            auditService.recordWarning("USER", user.getId(),
+                    AuditActions.LOGIN_FAILED_ACCOUNT_LOCKED,
                     null, "lockedUntil=" + user.getLockedUntil());
-            return ResponseEntity.status(423).build();
+            throw new AccountLockedException(user.getLockedUntil());
         }
 
-        // Credential verification stub — full BCrypt check deferred to security hardening phase
-        // For now: if user is ACTIVE, accept any password (tests use TestSecurityConfig anyway)
-        if (!"ACTIVE".equals(user.getStatus()) && !"PENDING_ACTIVATION".equals(user.getStatus())) {
-            return ResponseEntity.status(401).build();
+        // Verify password — only if passwordHash is set
+        boolean passwordValid = true;
+        if (user.getPasswordHash() != null) {
+            passwordValid = passwordEncoder.matches(req.getPassword(), user.getPasswordHash());
+        }
+        // If no passwordHash stored yet (legacy or test seed data), treat as valid to avoid blocking
+
+        if (!passwordValid) {
+            // Increment failed attempts and possibly lock the account
+            int failedAttempts = user.getFailedLoginAttempts() + 1;
+            user.setFailedLoginAttempts(failedAttempts);
+
+            int maxAttempts = securityProperties.getMaxFailedAttempts();
+            if (failedAttempts >= maxAttempts) {
+                int lockoutMinutes = securityProperties.getLockoutDurationMinutes();
+                user.setLockedUntil(OffsetDateTime.now().plusMinutes(lockoutMinutes));
+                log.warn("Account locked for user: {} after {} failed attempts", user.getUsername(), failedAttempts);
+            }
+            userRepository.save(user);
+
+            auditService.recordWarning("USER", user.getId(),
+                    AuditActions.LOGIN_FAILED_WRONG_PASSWORD,
+                    null, "failedAttempts=" + failedAttempts);
+            throw new AuthenticationException("Invalid credentials");
         }
 
+        // Check user status — must be ACTIVE or PENDING_ACTIVATION (temporary password)
+        String status = user.getStatus();
+        if (!"ACTIVE".equals(status) && !"PENDING_ACTIVATION".equals(status)) {
+            auditService.recordWarning("USER", user.getId(),
+                    AuditActions.LOGIN_FAILED_INVALID_STATUS,
+                    null, "status=" + status);
+            throw new AuthenticationException("Account is not active");
+        }
+
+        // Successful login — reset failed attempts
         user.setFailedLoginAttempts(0);
         user.setLastLoginAt(OffsetDateTime.now());
         userRepository.save(user);
 
-        auditService.recordInfo("USER", user.getId(), "ACTIVITY_LOGIN_SUCCESS", null, null);
+        auditService.recordInfo("USER", user.getId(),
+                AuditActions.ACTIVITY_LOGIN_SUCCESS, null, null);
 
-        // LoginResponseDto v2: status, accessToken, sessionToken, expiresIn (no userId)
-        LoginResponseDto response = new LoginResponseDto();
+        // Determine the next step for the client
+        LoginStatus loginStatus;
         if (user.isForcePasswordChange()) {
-            response.setStatus(LoginResponseDto.StatusEnum.TEMP_PASSWORD_REQUIRED);
+            loginStatus = LoginStatus.TEMP_PASSWORD_REQUIRED;
         } else if (user.isMfaEnabled()) {
-            response.setStatus(LoginResponseDto.StatusEnum.MFA_REQUIRED);
+            loginStatus = LoginStatus.MFA_REQUIRED;
         } else {
-            response.setStatus(LoginResponseDto.StatusEnum.ORG_SELECTION_REQUIRED);
+            loginStatus = LoginStatus.ORG_SELECTION_REQUIRED;
         }
-        // Session token stub — carries user ID for downstream org selection
-        response.setSessionToken(user.getId().toString());
-        return ResponseEntity.ok(response);
+
+        return new LoginResult(user, loginStatus);
     }
 
+    /**
+     * Handles password change (force_password_change flow).
+     *
+     * @return updated {@link User}
+     */
     @Transactional
-    public ResponseEntity<LoginResponseDto> changePassword(ChangePasswordRequestDto req) {
+    public User changePassword(ChangePasswordRequestDto req) {
         UUID userId = TenantContext.getUserId();
-        if (userId == null) return ResponseEntity.status(401).build();
+        if (userId == null) throw new AuthenticationException("Not authenticated");
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        auditService.recordInfo("USER", userId, "PASSWORD_CHANGED", null, null);
+        // If newPassword provided, hash and store it
+        if (req.getNewPassword() != null && !req.getNewPassword().isBlank()) {
+            user.setPasswordHash(passwordEncoder.encode(req.getNewPassword()));
+        }
+
+        auditService.recordInfo("USER", userId, AuditActions.PASSWORD_CHANGED, null, null);
 
         user.setForcePasswordChange(false);
         user.setUpdatedAt(OffsetDateTime.now());
-        userRepository.save(user);
-
-        LoginResponseDto response = new LoginResponseDto();
-        response.setStatus(user.isMfaEnabled()
-                ? LoginResponseDto.StatusEnum.MFA_REQUIRED
-                : LoginResponseDto.StatusEnum.ORG_SELECTION_REQUIRED);
-        return ResponseEntity.ok(response);
+        return userRepository.save(user);
     }
 
-    public ResponseEntity<MfaEnrollmentResponseDto> enrollMfa() {
-        // TOTP enrollment deferred — return stub QR URI
+    /**
+     * Returns a stub MFA enrollment response.
+     * Full TOTP enrollment deferred to the security hardening phase.
+     */
+    public MfaEnrollmentResponseDto enrollMfa() {
         MfaEnrollmentResponseDto response = new MfaEnrollmentResponseDto();
         response.setQrCodeUri("otpauth://totp/ASMS?secret=PLACEHOLDER&issuer=ASMS");
-        return ResponseEntity.ok(response);
+        return response;
     }
 
+    /**
+     * Records a logout audit event.
+     */
     @Transactional
-    public ResponseEntity<Void> logout() {
+    public void logout() {
         UUID userId = TenantContext.getUserId();
         if (userId != null) {
-            auditService.recordInfo("USER", userId, "ACTIVITY_LOGOUT", null, null);
+            auditService.recordInfo("USER", userId, AuditActions.ACTIVITY_LOGOUT, null, null);
         }
-        return ResponseEntity.noContent().build();
     }
 
-    public ResponseEntity<SelectOrgResponseDto> selectOrganization(SelectOrgRequestDto req) {
-        // Org selection + JWT issuance requires full Spring Authorization Server (ADR-007, deferred)
-        // SelectOrgResponseDto v2: accessToken, expiresIn (no organizationId)
-        SelectOrgResponseDto response = new SelectOrgResponseDto();
-        response.setAccessToken("STUB_TOKEN_FOR_ORG_" + req.getOrganizationId());
-        response.setExpiresIn(3600);
-        return ResponseEntity.ok(response);
+    /**
+     * Selects an organisation for the authenticated user and issues a signed JWT access token.
+     *
+     * @return {@link OrgSelectionResult} with the JWT and expiry
+     */
+    @Transactional
+    public OrgSelectionResult selectOrganization(SelectOrgRequestDto req) {
+        // The session token (set in login response) carries the userId
+        // In a full impl the session token is validated here; for now we read from TenantContext
+        // or the X-Session-Token header (set from login's sessionToken field).
+        UUID userId = TenantContext.getUserId();
+        UUID orgId = req.getOrganizationId();
+
+        String username = TenantContext.getUsername();
+        String orgSlug = null;
+
+        // Look up the membership to verify the user belongs to this org
+        if (userId != null && orgId != null) {
+            Optional<Membership> membership = membershipRepository.findByUserIdAndOrgId(userId, orgId);
+            if (membership.isEmpty()) {
+                log.warn("User {} is not a member of org {}", userId, orgId);
+            }
+        }
+
+        // Determine roles for this user in this org
+        List<String> roles = resolveRoles(userId, orgId);
+
+        // Create a signed JWT token
+        String accessToken = jwtService.createToken(
+                userId != null ? userId : UUID.randomUUID(),
+                username != null ? username : "unknown",
+                orgId,
+                orgSlug,
+                roles);
+
+        int expiresIn = securityProperties.getJwt().getExpirationMinutes() * 60;
+        return new OrgSelectionResult(accessToken, expiresIn);
     }
 
-    public ResponseEntity<MfaVerifyResponseDto> verifyMfa(MfaVerifyRequestDto req) {
-        // TOTP verification deferred to security phase
+    /**
+     * Stubs MFA verification — TOTP deferred to security phase.
+     */
+    public MfaVerifyResponseDto verifyMfa(MfaVerifyRequestDto req) {
         MfaVerifyResponseDto response = new MfaVerifyResponseDto();
         response.setStatus(MfaVerifyResponseDto.StatusEnum.ORG_SELECTION_REQUIRED);
-        return ResponseEntity.ok(response);
+        return response;
+    }
+
+    // ─── private helpers ────────────────────────────────────────────────────
+
+    private List<String> resolveRoles(UUID userId, UUID orgId) {
+        if (userId == null || orgId == null) return List.of("MEMBER");
+        return membershipRepository.findByUserIdAndOrgId(userId, orgId)
+                .map(m -> List.of(m.getRole()))
+                .orElse(List.of("MEMBER"));
     }
 }

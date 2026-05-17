@@ -6,8 +6,6 @@ Feature: Dashboard KPI Summary
   Background:
     Given the service is running
 
-  # AC-10: getDashboardSummary
-  @Pending
   Scenario: Dashboard summary returns all KPI fields
     When I request the dashboard summary
     Then the response status is 200
@@ -17,8 +15,6 @@ Feature: Dashboard KPI Summary
     And the response contains field "recentActivityCount"
     And the response contains field "generatedAt"
 
-  # AC-10: openAlertsBySeverity breakdown
-  @Pending
   Scenario: Dashboard openAlertsBySeverity contains all severity bands
     When I request the dashboard summary
     Then the response status is 200

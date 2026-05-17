@@ -9,6 +9,8 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -18,8 +20,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  * <p>All endpoints require a JWT Bearer token except the public auth endpoints.
  * Stateless session management — no server-side HTTP session.
  *
- * <p>TenantContextFilter runs after JWT validation to populate TenantContext
- * with org_id and user UUID from JWT claims (ADR-006, AC-13).
+ * <p>TenantContextFilter validates the JWT, populates SecurityContext AND TenantContext
+ * from the token claims (change 3/5: no Spring OAuth2 resource server — we sign and verify
+ * JWTs with JJWT directly).
  *
  * <p>Excluded from the "test" profile — TestSecurityConfig is used instead,
  * permitting all requests so tests can verify HTTP responses without JWT credentials.
@@ -39,7 +42,7 @@ public class SecurityConfig {
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // Public auth endpoints
+                // Public auth endpoints — excluded from JWT validation
                 .requestMatchers(
                     "/asms/v1/auth/login",
                     "/asms/v1/auth/mfa/verify",
@@ -51,13 +54,17 @@ public class SecurityConfig {
                 // All other endpoints require authentication
                 .anyRequest().authenticated()
             )
-            .oauth2ResourceServer(oauth2 -> oauth2
-                .jwt(jwt -> {
-                    // JwtDecoder auto-configured from spring.security.oauth2.resourceserver.jwt.jwk-set-uri
-                })
-            )
-            .addFilterAfter(tenantContextFilter, UsernamePasswordAuthenticationFilter.class);
+            // Use our own TenantContextFilter (JJWT-based) — no Spring OAuth2 resource server
+            .addFilterBefore(tenantContextFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    /**
+     * BCrypt password encoder — used in AuthService for hash/verify and SuperAdmin bootstrap.
+     */
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 }

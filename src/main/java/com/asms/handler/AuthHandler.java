@@ -10,6 +10,9 @@ import com.asms.model.MfaVerifyResponseDto;
 import com.asms.model.SelectOrgRequestDto;
 import com.asms.model.SelectOrgResponseDto;
 import com.asms.service.AuthService;
+import com.asms.service.AuthService.LoginResult;
+import com.asms.service.AuthService.LoginStatus;
+import com.asms.service.AuthService.OrgSelectionResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -22,7 +25,9 @@ import org.springframework.stereotype.Component;
  * Translates HTTP concerns (DTO in/out, response status) and delegates all business
  * logic to {@link AuthService}.
  *
- * <p>No business logic lives here. This class must remain a thin adapter.
+ * <p>No business logic lives here. Services return domain objects; this class
+ * maps them to DTOs using inline mapping (Auth flow DTOs are thin enough not to
+ * require a dedicated MapStruct mapper).
  */
 @Slf4j
 @Component
@@ -32,32 +37,57 @@ public class AuthHandler implements AuthApiDelegate {
     private final AuthService authService;
 
     @Override
+    public ResponseEntity<LoginResponseDto> login(LoginRequestDto loginRequestDto) {
+        LoginResult result = authService.login(loginRequestDto);
+        LoginResponseDto response = new LoginResponseDto();
+        response.setStatus(mapLoginStatus(result.status()));
+        // Session token carries userId for the downstream org-selection step
+        response.setSessionToken(result.user().getId().toString());
+        return ResponseEntity.ok(response);
+    }
+
+    @Override
     public ResponseEntity<LoginResponseDto> changePassword(ChangePasswordRequestDto changePasswordRequestDto) {
-        return authService.changePassword(changePasswordRequestDto);
+        var user = authService.changePassword(changePasswordRequestDto);
+        LoginResponseDto response = new LoginResponseDto();
+        response.setStatus(user.isMfaEnabled()
+                ? LoginResponseDto.StatusEnum.MFA_REQUIRED
+                : LoginResponseDto.StatusEnum.ORG_SELECTION_REQUIRED);
+        return ResponseEntity.ok(response);
     }
 
     @Override
     public ResponseEntity<MfaEnrollmentResponseDto> enrollMfa() {
-        return authService.enrollMfa();
-    }
-
-    @Override
-    public ResponseEntity<LoginResponseDto> login(LoginRequestDto loginRequestDto) {
-        return authService.login(loginRequestDto);
+        return ResponseEntity.ok(authService.enrollMfa());
     }
 
     @Override
     public ResponseEntity<Void> logout() {
-        return authService.logout();
+        authService.logout();
+        return ResponseEntity.noContent().build();
     }
 
     @Override
     public ResponseEntity<SelectOrgResponseDto> selectOrganization(SelectOrgRequestDto selectOrgRequestDto) {
-        return authService.selectOrganization(selectOrgRequestDto);
+        OrgSelectionResult result = authService.selectOrganization(selectOrgRequestDto);
+        SelectOrgResponseDto response = new SelectOrgResponseDto();
+        response.setAccessToken(result.accessToken());
+        response.setExpiresIn(result.expiresInSeconds());
+        return ResponseEntity.ok(response);
     }
 
     @Override
     public ResponseEntity<MfaVerifyResponseDto> verifyMfa(MfaVerifyRequestDto mfaVerifyRequestDto) {
-        return authService.verifyMfa(mfaVerifyRequestDto);
+        return ResponseEntity.ok(authService.verifyMfa(mfaVerifyRequestDto));
+    }
+
+    // ─── private mapping helpers ─────────────────────────────────────────────
+
+    private LoginResponseDto.StatusEnum mapLoginStatus(LoginStatus status) {
+        return switch (status) {
+            case TEMP_PASSWORD_REQUIRED -> LoginResponseDto.StatusEnum.TEMP_PASSWORD_REQUIRED;
+            case MFA_REQUIRED -> LoginResponseDto.StatusEnum.MFA_REQUIRED;
+            case ORG_SELECTION_REQUIRED -> LoginResponseDto.StatusEnum.ORG_SELECTION_REQUIRED;
+        };
     }
 }

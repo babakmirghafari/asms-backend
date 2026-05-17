@@ -13,6 +13,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -81,6 +83,7 @@ public class PermissionImport {
      * {@code PermissionImportRowIssueDto} objects. Deserialized by the service layer.
      */
     @Column(name = "issues_json", columnDefinition = "JSONB")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String issuesJson;
 
     /** UTC timestamp after which this session cannot be committed. */

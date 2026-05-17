@@ -6,17 +6,14 @@ Feature: Session Management
   Background:
     Given the service is running
 
-  # TODO: implement after session domain entity and repository are wired
-  # Runtime Flow 9: Session revocation
-  @Pending
   Scenario: Revoke an active session
     Given a session exists
     When I revoke the session by id
-    Then the response status is 204
+    Then the response status is 200
+    And the response contains field "id"
 
-  # TODO: implement after session domain entity and repository are wired
-  @Pending
   Scenario: List active sessions for an organization
+    Given a session exists
     When I list sessions for my organization
     Then the response status is 200
     And the response contains field "content"

@@ -57,6 +57,10 @@ public class AuditService {
                             Object afterState,
                             String severity) {
         UUID orgId    = TenantContext.getOrgId();
+        if (orgId == null) {
+            log.debug("Skipping audit for action: {} — no tenant context (pre-auth request)", action);
+            return null;
+        }
         UUID actorId  = TenantContext.getUserId();
         String actor  = TenantContext.getUsername();
 

@@ -1,6 +1,8 @@
 package com.asms.handler;
 
 import com.asms.api.AlertsApiDelegate;
+import com.asms.domain.Alert;
+import com.asms.mapper.AlertMapper;
 import com.asms.model.AcknowledgeAlertRequestDto;
 import com.asms.model.AlertDto;
 import com.asms.model.EscalateAlertRequestDto;
@@ -9,15 +11,18 @@ import com.asms.model.ResolveAlertRequestDto;
 import com.asms.service.AlertsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
  * REST adapter for the Alerts API.
  *
  * <p>Implements {@link AlertsApiDelegate}. Delegates all business logic to {@link AlertsService}.
+ * Entity → DTO conversion is done by {@link AlertMapper}.
  *
  * <p>v2.0.0 operations: acknowledge, resolve, escalate, getById, list.
  */
@@ -27,33 +32,52 @@ import java.util.UUID;
 public class AlertsHandler implements AlertsApiDelegate {
 
     private final AlertsService alertsService;
+    private final AlertMapper alertMapper;
 
     @Override
     public ResponseEntity<AlertDto> acknowledgeAlert(
             UUID alertId, AcknowledgeAlertRequestDto acknowledgeAlertRequestDto) {
-        return alertsService.acknowledgeAlert(alertId, acknowledgeAlertRequestDto);
+        Alert alert = alertsService.acknowledgeAlert(alertId, acknowledgeAlertRequestDto);
+        return ResponseEntity.ok(alertMapper.toDto(alert));
     }
 
     @Override
     public ResponseEntity<AlertDto> resolveAlert(
             UUID alertId, ResolveAlertRequestDto resolveAlertRequestDto) {
-        return alertsService.resolveAlert(alertId, resolveAlertRequestDto);
+        Alert alert = alertsService.resolveAlert(alertId, resolveAlertRequestDto);
+        return ResponseEntity.ok(alertMapper.toDto(alert));
     }
 
     @Override
     public ResponseEntity<AlertDto> escalateAlert(
             UUID alertId, EscalateAlertRequestDto escalateAlertRequestDto) {
-        return alertsService.escalateAlert(alertId, escalateAlertRequestDto);
+        Alert alert = alertsService.escalateAlert(alertId, escalateAlertRequestDto);
+        return ResponseEntity.ok(alertMapper.toDto(alert));
     }
 
     @Override
     public ResponseEntity<AlertDto> getAlertById(UUID alertId) {
-        return alertsService.getAlertById(alertId);
+        return ResponseEntity.ok(alertMapper.toDto(alertsService.getAlertById(alertId)));
     }
 
     @Override
     public ResponseEntity<PagedResponseDto> listAlerts(
             Integer page, Integer size, UUID organizationId, String type, String status) {
-        return alertsService.listAlerts(page, size, organizationId, type, status);
+        Page<Alert> alerts = alertsService.listAlerts(page, size, organizationId, type, status);
+        List<AlertDto> dtos = alerts.getContent().stream().map(alertMapper::toDto).toList();
+        return ResponseEntity.ok(buildPage(dtos, alerts.getTotalElements(),
+                alerts.getNumber(), alerts.getSize()));
+    }
+
+    // ─── private helpers ────────────────────────────────────────────────────
+
+    private PagedResponseDto buildPage(List<?> items, long total, int page, int size) {
+        PagedResponseDto dto = new PagedResponseDto();
+        dto.setContent(items.stream().map(i -> (Object) i).toList());
+        dto.setTotalElements(total);
+        dto.setNumber(page);
+        dto.setSize(size);
+        dto.setTotalPages(size > 0 ? (int) Math.ceil((double) total / size) : 0);
+        return dto;
     }
 }

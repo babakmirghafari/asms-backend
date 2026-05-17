@@ -5,6 +5,8 @@ import com.asms.model.AccessControlSimulateRequestDto;
 import com.asms.model.AccessControlSimulateResponseDto;
 import com.asms.model.EffectivePermissionsDto;
 import com.asms.service.AccessControlService;
+import com.asms.service.AccessControlService.EffectivePermissionsResult;
+import com.asms.service.AccessControlService.SimulateResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -15,7 +17,8 @@ import java.util.UUID;
 /**
  * REST adapter for the AccessControl API.
  *
- * <p>Implements {@link AccessControlApiDelegate}. Delegates all business logic to {@link AccessControlService}.
+ * <p>Implements {@link AccessControlApiDelegate}. Delegates all business logic to
+ * {@link AccessControlService}. Maps service result records to contract DTOs.
  *
  * <p>Note: {@code simulateAccessControl} is deprecated in v2.0.0 per the access-control delegate.
  * The v2 simulation endpoint is {@code POST /permissions/simulate} via {@link PermissionsHandler}.
@@ -30,7 +33,14 @@ public class AccessControlHandler implements AccessControlApiDelegate {
     @Override
     public ResponseEntity<EffectivePermissionsDto> getEffectivePermissions(
             UUID userId, UUID organizationId) {
-        return accessControlService.getEffectivePermissions(userId, organizationId);
+        EffectivePermissionsResult result =
+                accessControlService.getEffectivePermissions(userId, organizationId);
+        EffectivePermissionsDto dto = new EffectivePermissionsDto();
+        dto.setUserId(result.userId());
+        dto.setOrganizationId(result.organizationId());
+        dto.setPermissions(result.permissions());
+        dto.setFromGroups(result.fromGroups());
+        return ResponseEntity.ok(dto);
     }
 
     /**
@@ -43,6 +53,15 @@ public class AccessControlHandler implements AccessControlApiDelegate {
     @Override
     public ResponseEntity<AccessControlSimulateResponseDto> simulateAccessControl(
             AccessControlSimulateRequestDto accessControlSimulateRequestDto) {
-        return accessControlService.simulateAccessControl(accessControlSimulateRequestDto);
+        SimulateResult result = accessControlService.simulateAccessControl(accessControlSimulateRequestDto);
+        AccessControlSimulateResponseDto dto = new AccessControlSimulateResponseDto();
+        dto.setDecision(result.granted()
+                ? AccessControlSimulateResponseDto.DecisionEnum.ALLOW
+                : AccessControlSimulateResponseDto.DecisionEnum.DENY);
+        dto.setUserId(result.userId());
+        dto.setOrganizationId(result.organizationId());
+        dto.setResource(result.resource());
+        dto.setAction(result.action());
+        return ResponseEntity.ok(dto);
     }
 }
