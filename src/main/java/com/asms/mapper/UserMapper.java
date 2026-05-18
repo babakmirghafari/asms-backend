@@ -23,13 +23,18 @@ public interface UserMapper {
     @ValueMapping(source = "DELETED", target = MappingConstants.NULL)
     UserDto.StatusEnum toStatusEnum(UserStatus status);
 
-    @Mapping(qualifiedByName = "toUserEntity")
-    User toUserEntityFromCreateUserRequestDto(CreateUserRequestDto createUserRequestDto);
+    default User toUserEntityFromCreateUserRequestDto(CreateUserRequestDto createUserRequestDto) {
+        return toUser(createUserRequestDto);
+    }
 
     @Named("toUserEntity")
     default User toUser(CreateUserRequestDto dto) {
-        // TODO body of Mapping
-        return User.builder().build();
+        if (dto == null) return User.builder().build();
+        return User.builder()
+                .username(dto.getUsername())
+                .email(dto.getEmail())
+                .phoneNumber(dto.getPhoneNumber())
+                .build();
     }
 
     /**
