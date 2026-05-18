@@ -73,14 +73,7 @@ public class PermissionGroupsHandler implements PermissionGroupsApiDelegate {
         int from = Math.min(pageNum * pageSize, members.size());
         int to   = Math.min(from + pageSize, members.size());
         List<Object> slice = members.subList(from, to);
-
-        PagedResponseDto dto = new PagedResponseDto();
-        dto.setContent(slice);
-        dto.setTotalElements((long) members.size());
-        dto.setNumber(pageNum);
-        dto.setSize(pageSize);
-        dto.setTotalPages((int) Math.ceil((double) members.size() / pageSize));
-        return ResponseEntity.ok(dto);
+        return ResponseEntity.ok(PageResponseBuilder.build(slice, members.size(), pageNum, pageSize));
     }
 
     @Override
