@@ -1,6 +1,9 @@
 package com.asms.domain;
 
+import com.asms.domain.enums.SessionStatus;
+import com.asms.domain.enums.converter.SessionStatusConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -45,7 +48,8 @@ public class Session {
     private String userAgent;
 
     @Column(name = "status", nullable = false)
-    private String status;
+    @Convert(converter = SessionStatusConverter.class)
+    private SessionStatus status;
 
     @Column(name = "risk_score", nullable = false)
     private short riskScore;

@@ -1,5 +1,7 @@
 package com.asms.domain;
 
+import com.asms.domain.converter.ConvertableEnum;
+
 /**
  * Lifecycle status of a {@link PermissionImport} session (ARC42 §6 Flow 6 — two-step import).
  *
@@ -10,26 +12,21 @@ package com.asms.domain;
  *   BLOCKED         → (terminal — re-upload required)
  * </pre>
  */
-public enum PermissionImportStatus {
+public enum PermissionImportStatus implements ConvertableEnum {
 
-    /**
-     * CSV has been validated and passed (no errors). Ready to commit.
-     * This status expires after {@code import.ttl-minutes} (default 30 min).
-     */
-    PENDING_COMMIT,
+    PENDING_COMMIT(1),
+    BLOCKED(2),
+    COMMITTED(3),
+    EXPIRED(4);
 
-    /**
-     * CSV validation found errors. Cannot be committed — caller must fix and re-upload.
-     */
-    BLOCKED,
+    private final int key;
 
-    /**
-     * Import has been successfully committed. Permissions have been written to the database.
-     */
-    COMMITTED,
+    PermissionImportStatus(int key) {
+        this.key = key;
+    }
 
-    /**
-     * Import session expired before commit. Re-upload required.
-     */
-    EXPIRED
+    @Override
+    public int getKey() {
+        return key;
+    }
 }

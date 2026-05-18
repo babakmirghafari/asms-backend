@@ -1,6 +1,8 @@
 package com.asms.service;
 
 import com.asms.domain.Membership;
+import com.asms.domain.enums.MembershipStatus;
+import com.asms.domain.enums.UserRole;
 import com.asms.exception.AccessDeniedException;
 import com.asms.exception.ResourceNotFoundException;
 import com.asms.model.CreateMembershipRequestDto;
@@ -35,8 +37,8 @@ public class MembershipsService {
         Membership membership = Membership.builder()
                 .userId(req.getUserId())
                 .orgId(req.getOrganizationId())
-                .role("MEMBER")
-                .status("ACTIVE")
+                .role(UserRole.MEMBER)
+                .status(MembershipStatus.ACTIVE)
                 .createdAt(OffsetDateTime.now())
                 .updatedAt(OffsetDateTime.now())
                 .build();
@@ -55,7 +57,7 @@ public class MembershipsService {
         if (callerOrg != null && !callerOrg.equals(m.getOrgId())) {
             throw new AccessDeniedException("Cannot delete membership from a different organization");
         }
-        m.setStatus("REMOVED");
+        m.setStatus(MembershipStatus.REMOVED);
         m.setUpdatedAt(OffsetDateTime.now());
         membershipRepository.save(m);
         auditService.recordInfo("MEMBERSHIP", membershipId, "MEMBERSHIP_REMOVED", null, m);

@@ -3,6 +3,7 @@ package com.asms.integration;
 import com.asms.domain.AuditLog;
 import com.asms.domain.Organization;
 import com.asms.domain.User;
+import com.asms.domain.enums.UserStatus;
 import com.asms.repository.AuditLogRepository;
 import com.asms.repository.OrganizationRepository;
 import com.asms.repository.UserRepository;
@@ -59,7 +60,7 @@ class AuditServiceIntegrationTest extends BaseIntegrationTest {
         actor = userRepository.save(User.builder()
                 .username("audit-actor-" + System.nanoTime())
                 .email("audit-actor-" + System.nanoTime() + "@test.com")
-                .status("ACTIVE")
+                .status(UserStatus.ACTIVE)
                 .forcePasswordChange(false)
                 .mfaEnabled(false)
                 .failedLoginAttempts(0)
@@ -86,7 +87,7 @@ class AuditServiceIntegrationTest extends BaseIntegrationTest {
         assertThat(persisted.getTargetType()).isEqualTo("USER");
         assertThat(persisted.getTargetId()).isEqualTo(actor.getId());
         assertThat(persisted.getAction()).isEqualTo("USER_CREATED");
-        assertThat(persisted.getSeverity()).isEqualTo("INFO");
+        assertThat(persisted.getSeverity()).isEqualTo(com.asms.domain.enums.AuditSeverity.INFO);
         assertThat(persisted.getCreatedAt()).isNotNull();
     }
 
@@ -136,7 +137,7 @@ class AuditServiceIntegrationTest extends BaseIntegrationTest {
         AuditLog entry = auditService.recordWarning("USER", actor.getId(), "LOGIN_FAILED", null, null);
 
         AuditLog persisted = auditLogRepository.findById(entry.getId()).orElseThrow();
-        assertThat(persisted.getSeverity()).isEqualTo("WARNING");
+        assertThat(persisted.getSeverity()).isEqualTo(com.asms.domain.enums.AuditSeverity.WARNING);
     }
 
     @Test

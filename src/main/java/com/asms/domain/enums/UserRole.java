@@ -1,11 +1,21 @@
 package com.asms.domain.enums;
 
-/**
- * User roles within an organization.
- */
-public enum UserRole {
-    SUPER_ADMIN,
-    ADMIN,
-    SECURITY_ANALYST,
-    MEMBER
+import com.asms.domain.converter.ConvertableEnum;
+
+public enum UserRole implements ConvertableEnum {
+    SUPER_ADMIN(1),
+    ADMIN(2),
+    SECURITY_ANALYST(3),
+    MEMBER(4);
+
+    private final int key;
+
+    UserRole(int key) {
+        this.key = key;
+    }
+
+    @Override
+    public int getKey() {
+        return key;
+    }
 }

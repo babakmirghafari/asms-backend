@@ -1,11 +1,8 @@
 package com.asms.domain;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import com.asms.domain.enums.UserStatus;
+import com.asms.domain.enums.converter.UserStatusConverter;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -45,7 +42,8 @@ public class User {
     private String phoneNumber;
 
     @Column(name = "status", nullable = false)
-    private String status;
+    @Convert(converter = UserStatusConverter.class)
+    private UserStatus status;
 
     @Column(name = "password_hash")
     private String passwordHash;

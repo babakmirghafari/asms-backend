@@ -1,6 +1,9 @@
 package com.asms.domain;
 
+import com.asms.domain.enums.AuditSeverity;
+import com.asms.domain.enums.converter.AuditSeverityConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -63,7 +66,8 @@ public class AuditLog {
     private String afterState;
 
     @Column(name = "severity", nullable = false)
-    private String severity;
+    @Convert(converter = AuditSeverityConverter.class)
+    private AuditSeverity severity;
 
     @Column(name = "ip_address")
     private String ipAddress;

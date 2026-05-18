@@ -1,6 +1,11 @@
 package com.asms.domain;
 
+import com.asms.domain.enums.MembershipStatus;
+import com.asms.domain.enums.UserRole;
+import com.asms.domain.enums.converter.MembershipStatusConverter;
+import com.asms.domain.enums.converter.UserRoleConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -36,10 +41,12 @@ public class Membership {
     private UUID orgId;
 
     @Column(name = "role", nullable = false)
-    private String role;
+    @Convert(converter = UserRoleConverter.class)
+    private UserRole role;
 
     @Column(name = "status", nullable = false)
-    private String status;
+    @Convert(converter = MembershipStatusConverter.class)
+    private MembershipStatus status;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;

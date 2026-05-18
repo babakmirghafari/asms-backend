@@ -89,7 +89,7 @@ public class PermissionsService {
                 .description(req.getDescription())
                 .resource(req.getResource() != null ? req.getResource() : req.getName().split("\\.")[0])
                 .action(req.getAction() != null ? req.getAction().getValue() : "READ")
-                .status(PermissionStatus.DRAFT.name())
+                .status(PermissionStatus.DRAFT)
                 .createdAt(OffsetDateTime.now())
                 .updatedAt(OffsetDateTime.now())
                 .build();
@@ -103,7 +103,7 @@ public class PermissionsService {
     @Transactional
     public void deletePermission(UUID permissionId) {
         Permission perm = loadPermission(permissionId);
-        if (PermissionStatus.ACTIVE.name().equals(perm.getStatus())) {
+        if (PermissionStatus.ACTIVE == perm.getStatus()) {
             throw new ConflictException("PERMISSION_ACTIVE",
                     "Cannot delete an ACTIVE permission — deprecate it first");
         }
@@ -122,7 +122,7 @@ public class PermissionsService {
             Integer page, Integer size, UUID organizationId, String status) {
         UUID orgId = organizationId != null ? organizationId : TenantContext.getRequiredOrgId();
         if (status != null) {
-            return permissionRepository.findByOrgIdAndStatus(orgId, status,
+            return permissionRepository.findByOrgIdAndStatus(orgId, PermissionStatus.valueOf(status),
                     PageRequest.of(page != null ? page : 0, size != null ? size : 20));
         }
         return permissionRepository.findByOrgId(orgId,
@@ -134,14 +134,12 @@ public class PermissionsService {
     @Transactional
     public Permission updatePermissionStatus(UUID permissionId, UpdatePermissionStatusRequestDto req) {
         Permission perm = loadPermission(permissionId);
-        String currentStatus = perm.getStatus();
-        String targetStatus = req.getStatus().getValue();
+        PermissionStatus currentStatus = perm.getStatus();
+        PermissionStatus targetStatus = PermissionStatus.valueOf(req.getStatus().getValue());
 
         // Validate allowed transitions: DRAFT→ACTIVE, ACTIVE→DEPRECATED
-        boolean allowed = (PermissionStatus.DRAFT.name().equals(currentStatus)
-                    && PermissionStatus.ACTIVE.name().equals(targetStatus))
-                || (PermissionStatus.ACTIVE.name().equals(currentStatus)
-                    && PermissionStatus.DEPRECATED.name().equals(targetStatus));
+        boolean allowed = (PermissionStatus.DRAFT == currentStatus && PermissionStatus.ACTIVE == targetStatus)
+                || (PermissionStatus.ACTIVE == currentStatus && PermissionStatus.DEPRECATED == targetStatus);
 
         if (!allowed) {
             throw new ValidationException("INVALID_LIFECYCLE_TRANSITION",
@@ -368,7 +366,7 @@ public class PermissionsService {
                                     .description(description)
                                     .resource(resource != null ? resource : name.split("\\.")[0])
                                     .action(action)
-                                    .status(PermissionStatus.ACTIVE.name())
+                                    .status(PermissionStatus.ACTIVE)
                                     .createdAt(OffsetDateTime.now())
                                     .updatedAt(OffsetDateTime.now())
                                     .build();

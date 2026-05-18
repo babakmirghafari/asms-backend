@@ -4,6 +4,8 @@ import com.asms.domain.Organization;
 import com.asms.domain.Permission;
 import com.asms.domain.PermissionGroup;
 import com.asms.domain.User;
+import com.asms.domain.enums.PermissionStatus;
+import com.asms.domain.enums.UserStatus;
 import com.asms.repository.OrganizationRepository;
 import com.asms.repository.PermissionGroupRepository;
 import com.asms.repository.PermissionRepository;
@@ -63,7 +65,7 @@ class EffectivePermissionIntegrationTest extends BaseIntegrationTest {
         user = userRepository.save(User.builder()
                 .username("ac11-user-" + System.nanoTime())
                 .email("ac11-" + System.nanoTime() + "@test.com")
-                .status("ACTIVE")
+                .status(UserStatus.ACTIVE)
                 .forcePasswordChange(false)
                 .mfaEnabled(false)
                 .failedLoginAttempts(0)
@@ -81,7 +83,7 @@ class EffectivePermissionIntegrationTest extends BaseIntegrationTest {
                 .name("perm:read")
                 .resource("documents")
                 .action("READ")
-                .status("ACTIVE")
+                .status(PermissionStatus.ACTIVE)
                 .createdAt(OffsetDateTime.now())
                 .updatedAt(OffsetDateTime.now())
                 .build());
@@ -91,7 +93,7 @@ class EffectivePermissionIntegrationTest extends BaseIntegrationTest {
                 .name("perm:write")
                 .resource("documents")
                 .action("WRITE")
-                .status("ACTIVE")
+                .status(PermissionStatus.ACTIVE)
                 .createdAt(OffsetDateTime.now())
                 .updatedAt(OffsetDateTime.now())
                 .build());
@@ -138,7 +140,7 @@ class EffectivePermissionIntegrationTest extends BaseIntegrationTest {
                 .name("perm:admin")
                 .resource("system")
                 .action("ADMIN")
-                .status("ACTIVE")
+                .status(PermissionStatus.ACTIVE)
                 .createdAt(OffsetDateTime.now())
                 .updatedAt(OffsetDateTime.now())
                 .build());
@@ -198,7 +200,7 @@ class EffectivePermissionIntegrationTest extends BaseIntegrationTest {
                 .name("perm:active")
                 .resource("resource")
                 .action("READ")
-                .status("ACTIVE")
+                .status(PermissionStatus.ACTIVE)
                 .createdAt(OffsetDateTime.now())
                 .updatedAt(OffsetDateTime.now())
                 .build());
@@ -208,7 +210,7 @@ class EffectivePermissionIntegrationTest extends BaseIntegrationTest {
                 .name("perm:deprecated")
                 .resource("resource")
                 .action("DELETE")
-                .status("DEPRECATED")
+                .status(PermissionStatus.DEPRECATED)
                 .createdAt(OffsetDateTime.now())
                 .updatedAt(OffsetDateTime.now())
                 .build());

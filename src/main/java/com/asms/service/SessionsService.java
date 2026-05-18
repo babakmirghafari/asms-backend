@@ -40,8 +40,9 @@ public class SessionsService {
     public Page<Session> listSessions(
             Integer page, Integer size, UUID userId, UUID organizationId, String status) {
         UUID orgId = organizationId != null ? organizationId : TenantContext.getRequiredOrgId();
+        SessionStatus statusEnum = status != null ? SessionStatus.valueOf(status) : null;
         return sessionRepository.findFiltered(
-                orgId, userId, status,
+                orgId, userId, statusEnum,
                 PageRequest.of(page != null ? page : 0, size != null ? size : 20));
     }
 
@@ -52,7 +53,8 @@ public class SessionsService {
      */
     @Transactional
     public int revokeAllSessions(RevokeAllSessionsRequestDto req) {
-        int revoked = sessionRepository.revokeAllForUser(req.getUserId(), OffsetDateTime.now());
+        int revoked = sessionRepository.revokeAllForUser(
+                req.getUserId(), OffsetDateTime.now(), SessionStatus.REVOKED, SessionStatus.ACTIVE);
         auditService.recordWarning("SESSION", req.getUserId(),
                 AuditActions.ALL_SESSIONS_REVOKED, null, "revoked=" + revoked);
         return revoked;
@@ -61,7 +63,7 @@ public class SessionsService {
     @Transactional
     public Session revokeSession(UUID sessionId) {
         Session session = loadSession(sessionId);
-        session.setStatus(SessionStatus.REVOKED.name());
+        session.setStatus(SessionStatus.REVOKED);
         session.setRevokedAt(OffsetDateTime.now());
         Session saved = sessionRepository.save(session);
         auditService.recordWarning("SESSION", sessionId, AuditActions.SESSION_REVOKED, null, saved);

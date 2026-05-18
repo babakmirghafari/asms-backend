@@ -2,6 +2,8 @@ package com.asms.service;
 
 import com.asms.constant.AuditActions;
 import com.asms.domain.User;
+import com.asms.domain.enums.MembershipStatus;
+import com.asms.domain.enums.UserStatus;
 import com.asms.exception.ResourceNotFoundException;
 import com.asms.model.CreateUserRequestDto;
 import com.asms.model.UpdateUserRequestDto;
@@ -36,21 +38,19 @@ public class UsersService {
     private final AuditService auditService;
 
     @Transactional
-    public User createUser(CreateUserRequestDto req) {
-        log.debug("Create user: {}", req.getUsername());
-        User user = User.builder()
-                .username(req.getUsername())
-                .email(req.getEmail())
-                .firstName(req.getFirstName())
-                .lastName(req.getLastName())
-                .phoneNumber(req.getPhoneNumber())
-                .status("INACTIVE")
-                .forcePasswordChange(true)
-                .mfaEnabled(false)
-                .failedLoginAttempts(0)
-                .createdAt(OffsetDateTime.now())
-                .updatedAt(OffsetDateTime.now())
-                .build();
+    public User createUser(User user) {
+//        log.debug("Create user: {}", req.getUsername());
+//        User user = User.builder()
+//                .username(req.getUsername())
+//                .email(req.getEmail())
+//                .phoneNumber(req.getPhoneNumber())
+//                .status(UserStatus.INACTIVE)
+//                .forcePasswordChange(true)
+//                .mfaEnabled(false)
+//                .failedLoginAttempts(0)
+//                .createdAt(OffsetDateTime.now())
+//                .updatedAt(OffsetDateTime.now())
+//                .build();
         User saved = userRepository.save(user);
         auditService.recordInfo("USER", saved.getId(), AuditActions.USER_CREATED, null, saved);
         return saved;
@@ -60,7 +60,7 @@ public class UsersService {
     public void deleteUser(UUID userId) {
         User user = loadUser(userId);
         User before = copyForAudit(user);
-        user.setStatus("DELETED");
+        user.setStatus(UserStatus.DELETED);
         user.setUpdatedAt(OffsetDateTime.now());
         userRepository.save(user);
         auditService.recordInfo("USER", userId, AuditActions.USER_DELETED, before, null);
@@ -77,7 +77,9 @@ public class UsersService {
         // AC-13: org scope — use param if provided, otherwise TenantContext
         UUID orgId = organizationId != null ? organizationId : TenantContext.getOrgId();
         return userRepository.findAllByOrgId(
-                orgId, search, PageRequest.of(page != null ? page : 0, size != null ? size : 20));
+                orgId, search,
+                UserStatus.DELETED.getKey(), MembershipStatus.ACTIVE.getKey(),
+                PageRequest.of(page != null ? page : 0, size != null ? size : 20));
     }
 
     @Transactional
@@ -98,11 +100,11 @@ public class UsersService {
     public User updateUserStatus(UUID userId, UserStatusUpdateRequestDto req) {
         User user = loadUser(userId);
         User before = copyForAudit(user);
-        String newStatus = req.getStatus().getValue();
+        UserStatus newStatus = UserStatus.valueOf(req.getStatus().getValue());
         user.setStatus(newStatus);
-        if ("LOCKED".equals(newStatus)) {
+        if (UserStatus.LOCKED == newStatus) {
             user.setLockedUntil(OffsetDateTime.now().plusMinutes(15));
-        } else if ("ACTIVE".equals(newStatus)) {
+        } else if (UserStatus.ACTIVE == newStatus) {
             user.setLockedUntil(null);
             user.setFailedLoginAttempts(0);
         }
@@ -116,7 +118,7 @@ public class UsersService {
 
     private User loadUser(UUID userId) {
         return userRepository.findById(userId)
-                .filter(u -> !"DELETED".equals(u.getStatus()))
+                .filter(u -> UserStatus.DELETED != u.getStatus())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
     }
 

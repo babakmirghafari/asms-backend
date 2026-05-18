@@ -1,6 +1,7 @@
 package com.asms.repository;
 
 import com.asms.domain.Permission;
+import com.asms.domain.enums.PermissionStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -19,7 +20,7 @@ public interface PermissionRepository extends JpaRepository<Permission, UUID> {
 
     boolean existsByOrgIdAndName(UUID orgId, String name);
 
-    Page<Permission> findByOrgIdAndStatus(UUID orgId, String status, Pageable pageable);
+    Page<Permission> findByOrgIdAndStatus(UUID orgId, PermissionStatus status, Pageable pageable);
 
     Page<Permission> findByOrgId(UUID orgId, Pageable pageable);
 
@@ -33,13 +34,14 @@ public interface PermissionRepository extends JpaRepository<Permission, UUID> {
             JOIN pg.members u
             WHERE u.id = :userId
               AND pg.orgId = :orgId
-              AND p.status = 'ACTIVE'
+              AND p.status = :active
             """)
     List<Permission> findGroupPermissionsForUser(@Param("userId") UUID userId,
-                                                  @Param("orgId") UUID orgId);
+                                                  @Param("orgId") UUID orgId,
+                                                  @Param("active") PermissionStatus active);
 
     /**
      * Returns all ACTIVE permissions in an org, for CSV export / simulation.
      */
-    List<Permission> findByOrgIdAndStatus(UUID orgId, String status);
+    List<Permission> findByOrgIdAndStatus(UUID orgId, PermissionStatus status);
 }

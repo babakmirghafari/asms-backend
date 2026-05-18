@@ -1,6 +1,11 @@
 package com.asms.domain;
 
+import com.asms.domain.enums.AlertSeverity;
+import com.asms.domain.enums.AlertStatus;
+import com.asms.domain.enums.converter.AlertSeverityConverter;
+import com.asms.domain.enums.converter.AlertStatusConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -42,10 +47,12 @@ public class Alert {
     private String type;
 
     @Column(name = "severity", nullable = false)
-    private String severity;
+    @Convert(converter = AlertSeverityConverter.class)
+    private AlertSeverity severity;
 
     @Column(name = "status", nullable = false)
-    private String status;
+    @Convert(converter = AlertStatusConverter.class)
+    private AlertStatus status;
 
     @Column(name = "title", nullable = false)
     private String title;

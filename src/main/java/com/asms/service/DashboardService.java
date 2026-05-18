@@ -1,5 +1,10 @@
 package com.asms.service;
 
+import com.asms.domain.enums.AlertSeverity;
+import com.asms.domain.enums.AlertStatus;
+import com.asms.domain.enums.MembershipStatus;
+import com.asms.domain.enums.SessionStatus;
+import com.asms.domain.enums.UserStatus;
 import com.asms.repository.AlertRepository;
 import com.asms.repository.AuditLogRepository;
 import com.asms.repository.SessionRepository;
@@ -44,15 +49,15 @@ public class DashboardService {
         UUID orgId = organizationId != null ? organizationId : TenantContext.getRequiredOrgId();
         log.debug("Get dashboard summary — org: {}", orgId);
 
-        long low      = alertRepository.countOpenBySeverity(orgId, "LOW");
-        long medium   = alertRepository.countOpenBySeverity(orgId, "MEDIUM");
-        long high     = alertRepository.countOpenBySeverity(orgId, "HIGH");
-        long critical = alertRepository.countOpenBySeverity(orgId, "CRITICAL");
-        long activeSessions    = sessionRepository.countByOrgIdAndStatus(orgId, "ACTIVE");
-        long totalUsers        = userRepository.countNonDeleted();
-        long activeUsers       = userRepository.countActive();
-        long lockedUsers       = userRepository.countLocked();
-        long recentActivity    = auditLogRepository.countByOrgIdAndCreatedAtAfter(
+        long low      = alertRepository.countOpenBySeverity(orgId, AlertStatus.OPEN, AlertSeverity.LOW);
+        long medium   = alertRepository.countOpenBySeverity(orgId, AlertStatus.OPEN, AlertSeverity.MEDIUM);
+        long high     = alertRepository.countOpenBySeverity(orgId, AlertStatus.OPEN, AlertSeverity.HIGH);
+        long critical = alertRepository.countOpenBySeverity(orgId, AlertStatus.OPEN, AlertSeverity.CRITICAL);
+        long activeSessions = sessionRepository.countByOrgIdAndStatus(orgId, SessionStatus.ACTIVE);
+        long totalUsers     = userRepository.countNonDeleted(UserStatus.DELETED);
+        long activeUsers    = userRepository.countByStatus(UserStatus.ACTIVE);
+        long lockedUsers    = userRepository.countByStatus(UserStatus.LOCKED);
+        long recentActivity = auditLogRepository.countByOrgIdAndCreatedAtAfter(
                 orgId, OffsetDateTime.now().minusHours(24));
 
         return new DashboardSummary(low, medium, high, critical,

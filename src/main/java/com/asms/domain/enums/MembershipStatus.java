@@ -2,17 +2,15 @@ package com.asms.domain.enums;
 
 import com.asms.domain.converter.ConvertableEnum;
 
-public enum AlertStatus implements ConvertableEnum {
-    OPEN(1),
-    ACKNOWLEDGED(2),
-    INVESTIGATING(3),
-    ESCALATED(4),
-    RESOLVED(5),
-    SUPPRESSED(6);
+public enum MembershipStatus implements ConvertableEnum {
+    PENDING(1),
+    ACTIVE(2),
+    SUSPENDED(3),
+    REMOVED(4);
 
     private final int key;
 
-    AlertStatus(int key) {
+    MembershipStatus(int key) {
         this.key = key;
     }
 

@@ -4,6 +4,11 @@ import com.asms.domain.Membership;
 import com.asms.domain.Organization;
 import com.asms.domain.Permission;
 import com.asms.domain.User;
+import com.asms.domain.enums.AuditSeverity;
+import com.asms.domain.enums.MembershipStatus;
+import com.asms.domain.enums.PermissionStatus;
+import com.asms.domain.enums.UserRole;
+import com.asms.domain.enums.UserStatus;
 import com.asms.exception.AccessDeniedException;
 import com.asms.repository.AuditLogRepository;
 import com.asms.repository.AuditLogSpecifications;
@@ -86,7 +91,7 @@ class MultiTenantIsolationIntegrationTest extends BaseIntegrationTest {
         userInOrgA = userRepository.save(User.builder()
                 .username("user-orga-" + nonce)
                 .email("user-orga-" + nonce + "@test.com")
-                .status("ACTIVE")
+                .status(UserStatus.ACTIVE)
                 .forcePasswordChange(false)
                 .mfaEnabled(false)
                 .failedLoginAttempts(0)
@@ -97,7 +102,7 @@ class MultiTenantIsolationIntegrationTest extends BaseIntegrationTest {
         userInOrgB = userRepository.save(User.builder()
                 .username("user-orgb-" + nonce)
                 .email("user-orgb-" + nonce + "@test.com")
-                .status("ACTIVE")
+                .status(UserStatus.ACTIVE)
                 .forcePasswordChange(false)
                 .mfaEnabled(false)
                 .failedLoginAttempts(0)
@@ -109,8 +114,8 @@ class MultiTenantIsolationIntegrationTest extends BaseIntegrationTest {
         membershipRepository.save(Membership.builder()
                 .userId(userInOrgA.getId())
                 .orgId(orgA.getId())
-                .role("MEMBER")
-                .status("ACTIVE")
+                .role(UserRole.MEMBER)
+                .status(MembershipStatus.ACTIVE)
                 .createdAt(OffsetDateTime.now())
                 .updatedAt(OffsetDateTime.now())
                 .build());
@@ -119,8 +124,8 @@ class MultiTenantIsolationIntegrationTest extends BaseIntegrationTest {
         membershipRepository.save(Membership.builder()
                 .userId(userInOrgB.getId())
                 .orgId(orgB.getId())
-                .role("MEMBER")
-                .status("ACTIVE")
+                .role(UserRole.MEMBER)
+                .status(MembershipStatus.ACTIVE)
                 .createdAt(OffsetDateTime.now())
                 .updatedAt(OffsetDateTime.now())
                 .build());
@@ -165,7 +170,7 @@ class MultiTenantIsolationIntegrationTest extends BaseIntegrationTest {
                 .name("orga:only:perm")
                 .resource("documents")
                 .action("READ")
-                .status("ACTIVE")
+                .status(PermissionStatus.ACTIVE)
                 .createdAt(OffsetDateTime.now())
                 .updatedAt(OffsetDateTime.now())
                 .build());
@@ -200,7 +205,7 @@ class MultiTenantIsolationIntegrationTest extends BaseIntegrationTest {
                 .name("orga:secret:perm")
                 .resource("secrets")
                 .action("READ")
-                .status("ACTIVE")
+                .status(PermissionStatus.ACTIVE)
                 .createdAt(OffsetDateTime.now())
                 .updatedAt(OffsetDateTime.now())
                 .build());
@@ -220,7 +225,7 @@ class MultiTenantIsolationIntegrationTest extends BaseIntegrationTest {
                 .actorUsername(userInOrgA.getUsername())
                 .targetType("USER")
                 .action("USER_CREATED")
-                .severity("INFO")
+                .severity(AuditSeverity.INFO)
                 .previousHash("0".repeat(64))
                 .entryHash("a".repeat(64))
                 .createdAt(OffsetDateTime.now())
@@ -232,7 +237,7 @@ class MultiTenantIsolationIntegrationTest extends BaseIntegrationTest {
                 .actorUsername(userInOrgB.getUsername())
                 .targetType("USER")
                 .action("USER_CREATED")
-                .severity("INFO")
+                .severity(AuditSeverity.INFO)
                 .previousHash("0".repeat(64))
                 .entryHash("b".repeat(64))
                 .createdAt(OffsetDateTime.now())

@@ -2,6 +2,7 @@ package com.asms.service;
 
 import com.asms.domain.Permission;
 import com.asms.domain.PermissionGroup;
+import com.asms.domain.enums.PermissionStatus;
 import com.asms.repository.PermissionGroupRepository;
 import com.asms.repository.PermissionRepository;
 import lombok.RequiredArgsConstructor;
@@ -62,7 +63,7 @@ public class EffectivePermissionService {
 
         for (PermissionGroup group : groups) {
             for (Permission perm : group.getPermissions()) {
-                if ("ACTIVE".equals(perm.getStatus())) {
+                if (PermissionStatus.ACTIVE == perm.getStatus()) {
                     groupPermissions.add(perm);
                     permissionSources
                             .computeIfAbsent(perm.getId(), k -> new HashSet<>())

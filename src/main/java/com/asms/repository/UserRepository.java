@@ -1,6 +1,7 @@
 package com.asms.repository;
 
 import com.asms.domain.User;
+import com.asms.domain.enums.UserStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -28,15 +29,16 @@ public interface UserRepository extends JpaRepository<User, UUID> {
      *
      * Uses a native query to avoid Hibernate 6 type-inference issues with
      * null CONCAT parameters on PostgreSQL (lower(bytea) error).
+     * Enum keys are passed as integers because native SQL bypasses the JPA converter.
      */
     @Query(value = """
             SELECT u.* FROM users u
-            WHERE u.status != 'DELETED'
+            WHERE u.status != :deletedKey
               AND EXISTS (
                   SELECT 1 FROM memberships m
                   WHERE m.user_id = u.id
                     AND m.org_id = :orgId
-                    AND m.status = 'ACTIVE'
+                    AND m.status = :activeKey
               )
               AND (:search IS NULL
                    OR LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%'))
@@ -46,12 +48,12 @@ public interface UserRepository extends JpaRepository<User, UUID> {
             """,
             countQuery = """
             SELECT COUNT(*) FROM users u
-            WHERE u.status != 'DELETED'
+            WHERE u.status != :deletedKey
               AND EXISTS (
                   SELECT 1 FROM memberships m
                   WHERE m.user_id = u.id
                     AND m.org_id = :orgId
-                    AND m.status = 'ACTIVE'
+                    AND m.status = :activeKey
               )
               AND (:search IS NULL
                    OR LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%'))
@@ -62,14 +64,12 @@ public interface UserRepository extends JpaRepository<User, UUID> {
             nativeQuery = true)
     Page<User> findAllByOrgId(@Param("orgId") UUID orgId,
                                @Param("search") String search,
+                               @Param("deletedKey") int deletedKey,
+                               @Param("activeKey") int activeKey,
                                Pageable pageable);
 
-    @Query("SELECT COUNT(u) FROM User u WHERE u.status = 'ACTIVE'")
-    long countActive();
+    long countByStatus(UserStatus status);
 
-    @Query("SELECT COUNT(u) FROM User u WHERE u.status = 'LOCKED'")
-    long countLocked();
-
-    @Query("SELECT COUNT(u) FROM User u WHERE u.status != 'DELETED'")
-    long countNonDeleted();
+    @Query("SELECT COUNT(u) FROM User u WHERE u.status != :deleted")
+    long countNonDeleted(@Param("deleted") UserStatus deleted);
 }

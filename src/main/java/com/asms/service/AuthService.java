@@ -4,6 +4,8 @@ import com.asms.config.AsmsSecurityProperties;
 import com.asms.constant.AuditActions;
 import com.asms.domain.Membership;
 import com.asms.domain.User;
+import com.asms.domain.enums.UserRole;
+import com.asms.domain.enums.UserStatus;
 import com.asms.exception.AccountLockedException;
 import com.asms.exception.AuthenticationException;
 import com.asms.exception.ResourceNotFoundException;
@@ -123,8 +125,8 @@ public class AuthService {
         }
 
         // Check user status — must be ACTIVE or PENDING_ACTIVATION (temporary password)
-        String status = user.getStatus();
-        if (!"ACTIVE".equals(status) && !"PENDING_ACTIVATION".equals(status)) {
+        UserStatus status = user.getStatus();
+        if (status != UserStatus.ACTIVE && status != UserStatus.PENDING_ACTIVATION) {
             auditService.recordWarning("USER", user.getId(),
                     AuditActions.LOGIN_FAILED_INVALID_STATUS,
                     null, "status=" + status);
@@ -249,9 +251,9 @@ public class AuthService {
     // ─── private helpers ────────────────────────────────────────────────────
 
     private List<String> resolveRoles(UUID userId, UUID orgId) {
-        if (userId == null || orgId == null) return List.of("MEMBER");
+        if (userId == null || orgId == null) return List.of(UserRole.MEMBER.name());
         return membershipRepository.findByUserIdAndOrgId(userId, orgId)
-                .map(m -> List.of(m.getRole()))
-                .orElse(List.of("MEMBER"));
+                .map(m -> List.of(m.getRole().name()))
+                .orElse(List.of(UserRole.MEMBER.name()));
     }
 }

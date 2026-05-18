@@ -1,7 +1,7 @@
 package com.asms.config;
 
 import com.asms.domain.User;
-import com.asms.domain.enums.UserRole;
+import com.asms.domain.enums.UserStatus;
 import com.asms.repository.MembershipRepository;
 import com.asms.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -62,7 +62,7 @@ public class SuperAdminBootstrap {
                 .email(SUPER_ADMIN_EMAIL)
                 .firstName("Super")
                 .lastName("Admin")
-                .status("ACTIVE")
+                .status(UserStatus.ACTIVE)
                 .passwordHash(hashedPassword)
                 .forcePasswordChange(true)   // must change password on first login
                 .mfaEnabled(false)

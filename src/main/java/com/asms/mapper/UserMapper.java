@@ -29,6 +29,6 @@ public interface UserMapper {
     default User toUser(CreateUserRequestDto  dto) {
         // TODO body of Mapping
 
-        return User.builder().build();;
+        return User.builder().build();
     }
 }

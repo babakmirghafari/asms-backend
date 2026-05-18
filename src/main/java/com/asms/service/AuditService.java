@@ -1,6 +1,7 @@
 package com.asms.service;
 
 import com.asms.domain.AuditLog;
+import com.asms.domain.enums.AuditSeverity;
 import com.asms.repository.AuditLogRepository;
 import com.asms.security.TenantContext;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -47,7 +48,7 @@ public class AuditService {
      * @param action       the action code (e.g. "USER_CREATED", "PERMISSION_ACTIVATED")
      * @param beforeState  the entity state before the action — null for CREATE operations
      * @param afterState   the entity state after the action — null for DELETE operations
-     * @param severity     INFO | WARNING | CRITICAL
+     * @param severity     INFO, WARNING, or CRITICAL
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public AuditLog record(String targetType,
@@ -55,7 +56,7 @@ public class AuditService {
                             String action,
                             Object beforeState,
                             Object afterState,
-                            String severity) {
+                            AuditSeverity severity) {
         UUID orgId    = TenantContext.getOrgId();
         if (orgId == null) {
             log.debug("Skipping audit for action: {} — no tenant context (pre-auth request)", action);
@@ -110,17 +111,17 @@ public class AuditService {
 
     public AuditLog recordInfo(String targetType, UUID targetId, String action,
                                 Object before, Object after) {
-        return record(targetType, targetId, action, before, after, "INFO");
+        return record(targetType, targetId, action, before, after, AuditSeverity.INFO);
     }
 
     public AuditLog recordWarning(String targetType, UUID targetId, String action,
                                    Object before, Object after) {
-        return record(targetType, targetId, action, before, after, "WARNING");
+        return record(targetType, targetId, action, before, after, AuditSeverity.WARNING);
     }
 
     public AuditLog recordCritical(String targetType, UUID targetId, String action,
                                     Object before, Object after) {
-        return record(targetType, targetId, action, before, after, "CRITICAL");
+        return record(targetType, targetId, action, before, after, AuditSeverity.CRITICAL);
     }
 
     // ─── private helpers ────────────────────────────────────────────────────

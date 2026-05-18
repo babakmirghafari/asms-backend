@@ -35,8 +35,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AlertsService {
 
-    private static final Set<String> TERMINAL_STATUSES = Set.of(
-            AlertStatus.RESOLVED.name(), "SUPPRESSED");
+    private static final Set<AlertStatus> TERMINAL_STATUSES = Set.of(
+            AlertStatus.RESOLVED, AlertStatus.SUPPRESSED);
 
     private final AlertRepository alertRepository;
     private final AuditService auditService;
@@ -44,7 +44,7 @@ public class AlertsService {
     @Transactional
     public Alert acknowledgeAlert(UUID alertId, AcknowledgeAlertRequestDto req) {
         Alert alert = loadAlert(alertId);
-        alert.setStatus(AlertStatus.ACKNOWLEDGED.name());
+        alert.setStatus(AlertStatus.ACKNOWLEDGED);
         alert.setAcknowledgedBy(TenantContext.getUserId());
         alert.setAcknowledgedAt(OffsetDateTime.now());
         alert.setUpdatedAt(OffsetDateTime.now());
@@ -60,7 +60,7 @@ public class AlertsService {
             throw new ConflictException("ALERT_ALREADY_TERMINAL",
                     "Alert " + alertId + " is already in terminal status: " + alert.getStatus());
         }
-        alert.setStatus(AlertStatus.RESOLVED.name());
+        alert.setStatus(AlertStatus.RESOLVED);
         alert.setResolvedBy(TenantContext.getUserId());
         alert.setResolvedAt(OffsetDateTime.now());
         alert.setResolutionNote(req.getNote());
@@ -73,13 +73,12 @@ public class AlertsService {
     @Transactional
     public Alert escalateAlert(UUID alertId, EscalateAlertRequestDto req) {
         Alert alert = loadAlert(alertId);
-        String currentStatus = alert.getStatus();
-        if (AlertStatus.ESCALATED.name().equals(currentStatus)
-                || TERMINAL_STATUSES.contains(currentStatus)) {
+        AlertStatus currentStatus = alert.getStatus();
+        if (AlertStatus.ESCALATED == currentStatus || TERMINAL_STATUSES.contains(currentStatus)) {
             throw new ConflictException("ALERT_CANNOT_ESCALATE",
                     "Alert " + alertId + " cannot be escalated from status: " + currentStatus);
         }
-        alert.setStatus(AlertStatus.ESCALATED.name());
+        alert.setStatus(AlertStatus.ESCALATED);
         alert.setEscalatedBy(TenantContext.getUserId());
         alert.setEscalatedAt(OffsetDateTime.now());
         alert.setEscalationReason(req.getReason());
@@ -101,8 +100,9 @@ public class AlertsService {
     public Page<Alert> listAlerts(
             Integer page, Integer size, UUID organizationId, String type, String status) {
         UUID orgId = organizationId != null ? organizationId : TenantContext.getRequiredOrgId();
+        AlertStatus statusEnum = status != null ? AlertStatus.valueOf(status) : null;
         return alertRepository.findFiltered(
-                orgId, type, status,
+                orgId, type, statusEnum,
                 PageRequest.of(page != null ? page : 0, size != null ? size : 20));
     }
 

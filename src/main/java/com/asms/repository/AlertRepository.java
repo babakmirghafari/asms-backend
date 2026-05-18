@@ -1,6 +1,8 @@
 package com.asms.repository;
 
 import com.asms.domain.Alert;
+import com.asms.domain.enums.AlertSeverity;
+import com.asms.domain.enums.AlertStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -27,12 +29,14 @@ public interface AlertRepository extends JpaRepository<Alert, UUID> {
             """)
     Page<Alert> findFiltered(@Param("orgId") UUID orgId,
                               @Param("type") String type,
-                              @Param("status") String status,
+                              @Param("status") AlertStatus status,
                               Pageable pageable);
 
     @Query("""
             SELECT COUNT(a) FROM Alert a
-            WHERE a.orgId = :orgId AND a.status = 'OPEN' AND a.severity = :severity
+            WHERE a.orgId = :orgId AND a.status = :status AND a.severity = :severity
             """)
-    long countOpenBySeverity(@Param("orgId") UUID orgId, @Param("severity") String severity);
+    long countOpenBySeverity(@Param("orgId") UUID orgId,
+                              @Param("status") AlertStatus status,
+                              @Param("severity") AlertSeverity severity);
 }

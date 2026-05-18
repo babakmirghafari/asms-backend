@@ -1,6 +1,9 @@
 package com.asms.domain;
 
+import com.asms.domain.enums.PermissionStatus;
+import com.asms.domain.enums.converter.PermissionStatusConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -48,7 +51,8 @@ public class Permission {
     private String action;
 
     @Column(name = "status", nullable = false)
-    private String status;
+    @Convert(converter = PermissionStatusConverter.class)
+    private PermissionStatus status;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
