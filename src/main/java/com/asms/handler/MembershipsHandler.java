@@ -35,7 +35,8 @@ public class MembershipsHandler implements MembershipsApiDelegate {
     @Override
     public ResponseEntity<MembershipDto> createMembership(
             CreateMembershipRequestDto createMembershipRequestDto) {
-        Membership membership = membershipsService.createMembership(createMembershipRequestDto);
+        Membership entity = membershipMapper.toMembershipEntity(createMembershipRequestDto);
+        Membership membership = membershipsService.createMembership(entity);
         return ResponseEntity.status(201).body(membershipMapper.toDto(membership));
     }
 

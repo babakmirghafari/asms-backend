@@ -5,9 +5,6 @@ import com.asms.domain.Alert;
 import com.asms.domain.enums.AlertStatus;
 import com.asms.exception.ConflictException;
 import com.asms.exception.ResourceNotFoundException;
-import com.asms.model.AcknowledgeAlertRequestDto;
-import com.asms.model.EscalateAlertRequestDto;
-import com.asms.model.ResolveAlertRequestDto;
 import com.asms.repository.AlertRepository;
 import com.asms.security.TenantContext;
 import lombok.RequiredArgsConstructor;
@@ -41,8 +38,12 @@ public class AlertsService {
     private final AlertRepository alertRepository;
     private final AuditService auditService;
 
+    /**
+     * Acknowledges an alert. The handler extracts any optional note and passes
+     * primitive values — no DTO crosses the service boundary.
+     */
     @Transactional
-    public Alert acknowledgeAlert(UUID alertId, AcknowledgeAlertRequestDto req) {
+    public Alert acknowledgeAlert(UUID alertId) {
         Alert alert = loadAlert(alertId);
         alert.setStatus(AlertStatus.ACKNOWLEDGED);
         alert.setAcknowledgedBy(TenantContext.getUserId());
@@ -53,8 +54,15 @@ public class AlertsService {
         return saved;
     }
 
+    /**
+     * Resolves an alert with an optional resolution note.
+     * The handler extracts the note string from the request DTO before calling here.
+     *
+     * @param alertId        target alert identifier
+     * @param resolutionNote optional textual note explaining the resolution
+     */
     @Transactional
-    public Alert resolveAlert(UUID alertId, ResolveAlertRequestDto req) {
+    public Alert resolveAlert(UUID alertId, String resolutionNote) {
         Alert alert = loadAlert(alertId);
         if (TERMINAL_STATUSES.contains(alert.getStatus())) {
             throw new ConflictException("ALERT_ALREADY_TERMINAL",
@@ -63,15 +71,22 @@ public class AlertsService {
         alert.setStatus(AlertStatus.RESOLVED);
         alert.setResolvedBy(TenantContext.getUserId());
         alert.setResolvedAt(OffsetDateTime.now());
-        alert.setResolutionNote(req.getNote());
+        alert.setResolutionNote(resolutionNote);
         alert.setUpdatedAt(OffsetDateTime.now());
         Alert saved = alertRepository.save(alert);
         auditService.recordInfo("ALERT", alertId, AuditActions.ALERT_RESOLVED, null, saved);
         return saved;
     }
 
+    /**
+     * Escalates an alert. The handler extracts reason and target from the request DTO.
+     *
+     * @param alertId         target alert identifier
+     * @param escalationReason textual reason for escalation
+     * @param escalateTo      escalation target (user, team, or external system)
+     */
     @Transactional
-    public Alert escalateAlert(UUID alertId, EscalateAlertRequestDto req) {
+    public Alert escalateAlert(UUID alertId, String escalationReason, String escalateTo) {
         Alert alert = loadAlert(alertId);
         AlertStatus currentStatus = alert.getStatus();
         if (AlertStatus.ESCALATED == currentStatus || TERMINAL_STATUSES.contains(currentStatus)) {
@@ -81,13 +96,13 @@ public class AlertsService {
         alert.setStatus(AlertStatus.ESCALATED);
         alert.setEscalatedBy(TenantContext.getUserId());
         alert.setEscalatedAt(OffsetDateTime.now());
-        alert.setEscalationReason(req.getReason());
-        alert.setEscalatedTo(req.getEscalateTo());
+        alert.setEscalationReason(escalationReason);
+        alert.setEscalatedTo(escalateTo);
         alert.setUpdatedAt(OffsetDateTime.now());
         Alert saved = alertRepository.save(alert);
         auditService.recordWarning("ALERT", alertId, AuditActions.ALERT_ESCALATED, null, saved);
         log.info("[STUB] Escalation notification not yet implemented — target: {}, alert: {}",
-                req.getEscalateTo(), alertId);
+                escalateTo, alertId);
         return saved;
     }
 

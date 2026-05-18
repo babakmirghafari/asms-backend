@@ -37,16 +37,19 @@ public class PermissionGroupsHandler implements PermissionGroupsApiDelegate {
     @Override
     public ResponseEntity<PermissionGroupDto> addPermissionGroupMembers(
             UUID groupId, AddPermissionGroupMembersRequestDto addPermissionGroupMembersRequestDto) {
-        PermissionGroup group = permissionGroupsService.addPermissionGroupMembers(
-                groupId, addPermissionGroupMembersRequestDto);
+        java.util.List<java.util.UUID> memberIds = addPermissionGroupMembersRequestDto != null
+                ? addPermissionGroupMembersRequestDto.getUserIds()
+                : java.util.List.of();
+        PermissionGroup group = permissionGroupsService.addPermissionGroupMembers(groupId, memberIds);
         return ResponseEntity.ok(permissionGroupMapper.toDto(group));
     }
 
     @Override
     public ResponseEntity<PermissionGroupDto> createPermissionGroup(
             CreatePermissionGroupRequestDto createPermissionGroupRequestDto) {
-        PermissionGroup group = permissionGroupsService.createPermissionGroup(
+        PermissionGroup entity = permissionGroupMapper.toPermissionGroupEntity(
                 createPermissionGroupRequestDto);
+        PermissionGroup group = permissionGroupsService.createPermissionGroup(entity);
         return ResponseEntity.status(201).body(permissionGroupMapper.toDto(group));
     }
 
@@ -94,8 +97,12 @@ public class PermissionGroupsHandler implements PermissionGroupsApiDelegate {
     @Override
     public ResponseEntity<PermissionGroupDto> updatePermissionGroup(
             UUID groupId, UpdatePermissionGroupRequestDto updatePermissionGroupRequestDto) {
+        String name = updatePermissionGroupRequestDto != null
+                ? updatePermissionGroupRequestDto.getName() : null;
+        String description = updatePermissionGroupRequestDto != null
+                ? updatePermissionGroupRequestDto.getDescription() : null;
         PermissionGroup updated = permissionGroupsService.updatePermissionGroup(
-                groupId, updatePermissionGroupRequestDto);
+                groupId, name, description);
         return ResponseEntity.ok(permissionGroupMapper.toDto(updated));
     }
 

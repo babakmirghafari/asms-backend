@@ -1,6 +1,7 @@
 package com.asms.mapper;
 
 import com.asms.domain.Alert;
+import com.asms.domain.enums.AlertRiskLevel;
 import com.asms.domain.enums.AlertSeverity;
 import com.asms.domain.enums.AlertStatus;
 import com.asms.model.AlertDto;
@@ -21,6 +22,9 @@ import java.math.BigDecimal;
  *
  * <p>AlertSeverity → AlertDto.SeverityEnum and AlertStatus → AlertDto.StatusEnum are mapped
  * via explicit {@code @ValueMapping} methods — enum names match directly.
+ *
+ * <p>AlertRiskLevel → AlertDto.RiskLevelEnum is also mapped via {@code @ValueMapping}
+ * now that the domain field is a typed enum (was raw String before C-4 fix).
  */
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 public interface AlertMapper {
@@ -31,7 +35,7 @@ public interface AlertMapper {
     @Mapping(target = "severity", source = "severity")
     @Mapping(target = "status", source = "status")
     @Mapping(target = "riskScore", source = "riskScore", qualifiedByName = "bigDecimalToFloat")
-    @Mapping(target = "riskLevel", source = "riskLevel", qualifiedByName = "stringToRiskLevelEnum")
+    @Mapping(target = "riskLevel", source = "riskLevel")
     @Mapping(target = "actorUsername", ignore = true)
     @Mapping(target = "ipAddress", ignore = true)
     @Mapping(target = "acknowledgeNote", ignore = true)
@@ -43,18 +47,14 @@ public interface AlertMapper {
     @ValueMapping(source = MappingConstants.ANY_REMAINING, target = MappingConstants.THROW_EXCEPTION)
     AlertDto.StatusEnum toStatusEnum(AlertStatus status);
 
+    @ValueMapping(source = "LOW", target = "LOW")
+    @ValueMapping(source = "MEDIUM", target = "MEDIUM")
+    @ValueMapping(source = "HIGH", target = "HIGH")
+    @ValueMapping(source = "CRITICAL", target = "CRITICAL")
+    AlertDto.RiskLevelEnum toRiskLevelEnum(AlertRiskLevel riskLevel);
+
     @Named("bigDecimalToFloat")
     static Float bigDecimalToFloat(BigDecimal value) {
         return value != null ? value.floatValue() : null;
-    }
-
-    @Named("stringToRiskLevelEnum")
-    static AlertDto.RiskLevelEnum stringToRiskLevelEnum(String riskLevel) {
-        if (riskLevel == null) return null;
-        try {
-            return AlertDto.RiskLevelEnum.fromValue(riskLevel);
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
     }
 }

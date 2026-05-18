@@ -49,7 +49,9 @@ public class SessionsHandler implements SessionsApiDelegate {
     @Override
     public ResponseEntity<RevokeAllSessionsResponseDto> revokeAllSessions(
             RevokeAllSessionsRequestDto revokeAllSessionsRequestDto) {
-        int revoked = sessionsService.revokeAllSessions(revokeAllSessionsRequestDto);
+        java.util.UUID userId = revokeAllSessionsRequestDto != null
+                ? revokeAllSessionsRequestDto.getUserId() : null;
+        int revoked = sessionsService.revokeAllSessions(userId);
         RevokeAllSessionsResponseDto response = new RevokeAllSessionsResponseDto();
         response.setRevokedCount(revoked);
         return ResponseEntity.ok(response);

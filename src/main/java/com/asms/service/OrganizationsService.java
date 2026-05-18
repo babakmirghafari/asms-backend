@@ -2,8 +2,7 @@ package com.asms.service;
 
 import com.asms.domain.Organization;
 import com.asms.exception.ResourceNotFoundException;
-import com.asms.model.CreateOrganizationRequestDto;
-import com.asms.model.UpdateOrganizationRequestDto;
+import com.asms.domain.enums.OrganizationStatus;
 import com.asms.repository.OrganizationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,20 +29,13 @@ public class OrganizationsService {
     private final OrganizationRepository organizationRepository;
     private final AuditService auditService;
 
+    /**
+     * Persists a new organization. The handler converts the request DTO to an
+     * {@link Organization} entity via the mapper before calling here.
+     */
     @Transactional
-    public Organization createOrganization(CreateOrganizationRequestDto req) {
-        log.debug("Create organization: {}", req.getName());
-
-        Organization org = Organization.builder()
-                .name(req.getName())
-                .slug(generateSlug(req.getName()))
-                .parentOrgId(req.getParentOrganizationId())
-                .logoUrl(req.getLogoUrl())
-                .status("ACTIVE")
-                .createdAt(OffsetDateTime.now())
-                .updatedAt(OffsetDateTime.now())
-                .build();
-
+    public Organization createOrganization(Organization org) {
+        log.debug("Create organization: {}", org.getName());
         Organization saved = organizationRepository.save(org);
         auditService.recordInfo("ORGANIZATION", saved.getId(), "ORGANIZATION_CREATED", null, saved);
         return saved;
@@ -56,7 +48,7 @@ public class OrganizationsService {
         Organization org = organizationRepository.findById(organizationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Organization not found: " + organizationId));
 
-        org.setStatus("DELETED");
+        org.setStatus(OrganizationStatus.DELETED);
         org.setUpdatedAt(OffsetDateTime.now());
         organizationRepository.save(org);
         auditService.recordInfo("ORGANIZATION", organizationId, "ORGANIZATION_DELETED", null, org);
@@ -65,7 +57,7 @@ public class OrganizationsService {
     @Transactional(readOnly = true)
     public Organization getOrganizationById(UUID organizationId) {
         return organizationRepository.findById(organizationId)
-                .filter(o -> !"DELETED".equals(o.getStatus()))
+                .filter(o -> OrganizationStatus.DELETED != o.getStatus())
                 .orElseThrow(() -> new ResourceNotFoundException("Organization not found: " + organizationId));
     }
 
@@ -75,31 +67,28 @@ public class OrganizationsService {
         return organizationRepository.findAllActive(search, pageable);
     }
 
+    /**
+     * Applies updates to an existing organization.
+     * The handler extracts primitive fields from the request DTO before calling here.
+     *
+     * @param organizationId target organization identifier
+     * @param patch          partial Organization carrying the fields to update (null fields not applied)
+     */
     @Transactional
-    public Organization updateOrganization(UUID organizationId, UpdateOrganizationRequestDto req) {
+    public Organization updateOrganization(UUID organizationId, Organization patch) {
         log.debug("Update organization: {}", organizationId);
 
         Organization org = organizationRepository.findById(organizationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Organization not found: " + organizationId));
 
-        if (req.getName() != null)    org.setName(req.getName());
-        if (req.getLogoUrl() != null) org.setLogoUrl(req.getLogoUrl());
-        if (req.getStatus() != null)  org.setStatus(req.getStatus().getValue());
+        if (patch.getName() != null)    org.setName(patch.getName());
+        if (patch.getLogoUrl() != null) org.setLogoUrl(patch.getLogoUrl());
+        if (patch.getStatus() != null)  org.setStatus(patch.getStatus());
         org.setUpdatedAt(OffsetDateTime.now());
 
         Organization saved = organizationRepository.save(org);
         auditService.recordInfo("ORGANIZATION", organizationId, "ORGANIZATION_UPDATED", null, saved);
         return saved;
-    }
-
-    // ─── helpers ─────────────────────────────────────────────────────────────
-
-    private String generateSlug(String name) {
-        return name.toLowerCase()
-                .replaceAll("[^a-z0-9\\s-]", "")
-                .replaceAll("\\s+", "-")
-                .replaceAll("-+", "-")
-                .replaceAll("^-|-$", "");
     }
 
 }

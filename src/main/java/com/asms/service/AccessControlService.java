@@ -70,6 +70,12 @@ public class AccessControlService {
     }
 
     /**
+     * Simulates an access control decision for a given user, resource, and action.
+     *
+     * <p>Intentional exception to the "no DTO in service" rule: this is a query/simulation
+     * operation with no persisted domain entity. The request carries correlated fields
+     * (userId, organizationId, resource, action) forming a coherent query value object.
+     *
      * @deprecated in v2.0.0 — use {@code POST /permissions/simulate} via
      *             {@link PermissionsService#simulatePermission} instead.
      */

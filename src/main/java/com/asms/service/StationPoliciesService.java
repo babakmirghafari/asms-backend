@@ -2,8 +2,6 @@ package com.asms.service;
 
 import com.asms.domain.StationPolicy;
 import com.asms.exception.ResourceNotFoundException;
-import com.asms.model.CreateStationPolicyRequestDto;
-import com.asms.model.UpdateStationPolicyRequestDto;
 import com.asms.repository.StationPolicyRepository;
 import com.asms.security.TenantContext;
 import lombok.RequiredArgsConstructor;
@@ -29,24 +27,12 @@ public class StationPoliciesService {
     private final StationPolicyRepository stationPolicyRepository;
     private final AuditService auditService;
 
+    /**
+     * Persists a new station policy. The handler converts the request DTO to a
+     * {@link StationPolicy} entity via the mapper before calling here.
+     */
     @Transactional
-    public StationPolicy createStationPolicy(CreateStationPolicyRequestDto req) {
-        UUID orgId = req.getOrganizationId() != null ? req.getOrganizationId() : TenantContext.getRequiredOrgId();
-        StationPolicy policy = StationPolicy.builder()
-                .orgId(orgId)
-                .userId(null) // CreateStationPolicyRequestDto v2 has no userId; policies are org-scoped
-                .name(req.getName())
-                .description(req.getDescription())
-                .status("ACTIVE")
-                .allowedIps(req.getAllowedIpRanges())
-                .allowedDays(req.getAllowedDays() != null
-                        ? req.getAllowedDays().stream().map(Integer::shortValue).toList()
-                        : null)
-                .workHourStart(parseTime(req.getWorkStartTime()))
-                .workHourEnd(parseTime(req.getWorkEndTime()))
-                .createdAt(OffsetDateTime.now())
-                .updatedAt(OffsetDateTime.now())
-                .build();
+    public StationPolicy createStationPolicy(StationPolicy policy) {
         StationPolicy saved = stationPolicyRepository.save(policy);
         auditService.recordInfo("STATION_POLICY", saved.getId(), "STATION_POLICY_CREATED", null, saved);
         return saved;
@@ -71,17 +57,24 @@ public class StationPoliciesService {
                 orgId, PageRequest.of(page != null ? page : 0, size != null ? size : 20));
     }
 
+    /**
+     * Applies updates to an existing station policy.
+     * The handler extracts primitive fields from the request DTO before calling here.
+     *
+     * @param policyId      target policy identifier
+     * @param patch         partial StationPolicy carrying the fields to update (null fields not applied)
+     */
     @Transactional
-    public StationPolicy updateStationPolicy(UUID policyId, UpdateStationPolicyRequestDto req) {
+    public StationPolicy updateStationPolicy(UUID policyId, StationPolicy patch) {
         StationPolicy policy = loadPolicy(policyId);
         StationPolicy before = cloneForAudit(policy);
-        if (req.getName() != null)           policy.setName(req.getName());
-        if (req.getDescription() != null)    policy.setDescription(req.getDescription());
-        if (req.getStatus() != null)         policy.setStatus(req.getStatus().getValue());
-        if (req.getAllowedIpRanges() != null) policy.setAllowedIps(req.getAllowedIpRanges());
-        if (req.getAllowedDays() != null)     policy.setAllowedDays(req.getAllowedDays().stream().map(Integer::shortValue).toList());
-        if (req.getWorkStartTime() != null)  policy.setWorkHourStart(parseTime(req.getWorkStartTime()));
-        if (req.getWorkEndTime() != null)    policy.setWorkHourEnd(parseTime(req.getWorkEndTime()));
+        if (patch.getName() != null)           policy.setName(patch.getName());
+        if (patch.getDescription() != null)    policy.setDescription(patch.getDescription());
+        if (patch.getStatus() != null)         policy.setStatus(patch.getStatus());
+        if (patch.getAllowedIps() != null)      policy.setAllowedIps(patch.getAllowedIps());
+        if (patch.getAllowedDays() != null)     policy.setAllowedDays(patch.getAllowedDays());
+        if (patch.getWorkHourStart() != null)  policy.setWorkHourStart(patch.getWorkHourStart());
+        if (patch.getWorkHourEnd() != null)    policy.setWorkHourEnd(patch.getWorkHourEnd());
         policy.setUpdatedAt(OffsetDateTime.now());
         StationPolicy saved = stationPolicyRepository.save(policy);
         auditService.recordInfo("STATION_POLICY", policyId, "STATION_POLICY_UPDATED", before, saved);
@@ -96,17 +89,6 @@ public class StationPoliciesService {
         }
         return stationPolicyRepository.findById(policyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Station policy not found: " + policyId));
-    }
-
-    /** Parses an HH:mm or HH:mm:ss time string to the hour component as Short. */
-    public Short parseTime(String time) {
-        if (time == null) return null;
-        try {
-            return Short.parseShort(time.split(":")[0]);
-        } catch (NumberFormatException e) {
-            log.warn("Could not parse time value: {}", time);
-            return null;
-        }
     }
 
     private StationPolicy cloneForAudit(StationPolicy p) {

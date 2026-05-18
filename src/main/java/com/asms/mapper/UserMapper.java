@@ -3,6 +3,7 @@ package com.asms.mapper;
 import com.asms.domain.User;
 import com.asms.domain.enums.UserStatus;
 import com.asms.model.CreateUserRequestDto;
+import com.asms.model.UpdateUserRequestDto;
 import com.asms.model.UserDto;
 import org.mapstruct.*;
 
@@ -26,9 +27,26 @@ public interface UserMapper {
     User toUserEntityFromCreateUserRequestDto(CreateUserRequestDto createUserRequestDto);
 
     @Named("toUserEntity")
-    default User toUser(CreateUserRequestDto  dto) {
+    default User toUser(CreateUserRequestDto dto) {
         // TODO body of Mapping
-
         return User.builder().build();
+    }
+
+    /**
+     * Converts an {@link UpdateUserRequestDto} into a partial {@link User} patch object.
+     * Only non-null DTO fields are populated; the service applies them selectively.
+     *
+     * @param dto the incoming update request
+     * @return a partial User carrying the fields to update
+     */
+    @Named("toUserPatch")
+    default User toUserPatch(UpdateUserRequestDto dto) {
+        if (dto == null) return User.builder().build();
+        return User.builder()
+                .firstName(dto.getFirstName())
+                .lastName(dto.getLastName())
+                .email(dto.getEmail())
+                .phoneNumber(dto.getPhoneNumber())
+                .build();
     }
 }

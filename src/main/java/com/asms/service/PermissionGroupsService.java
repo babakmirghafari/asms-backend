@@ -3,9 +3,6 @@ package com.asms.service;
 import com.asms.domain.PermissionGroup;
 import com.asms.domain.User;
 import com.asms.exception.ResourceNotFoundException;
-import com.asms.model.AddPermissionGroupMembersRequestDto;
-import com.asms.model.CreatePermissionGroupRequestDto;
-import com.asms.model.UpdatePermissionGroupRequestDto;
 import com.asms.repository.PermissionGroupRepository;
 import com.asms.repository.UserRepository;
 import com.asms.security.TenantContext;
@@ -39,34 +36,35 @@ public class PermissionGroupsService {
     private final UserRepository userRepository;
     private final AuditService auditService;
 
+    /**
+     * Adds members to a permission group.
+     * The handler extracts the {@code memberIds} list from the request DTO before calling here.
+     *
+     * @param groupId   target group identifier
+     * @param memberIds user IDs to add as members
+     */
     @Transactional
-    public PermissionGroup addPermissionGroupMembers(
-            UUID groupId, AddPermissionGroupMembersRequestDto req) {
+    public PermissionGroup addPermissionGroupMembers(UUID groupId, List<UUID> memberIds) {
         PermissionGroup group = loadGroup(groupId);
 
-        for (UUID userId : req.getUserIds()) {
+        for (UUID userId : memberIds) {
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
             group.getMembers().add(user);
         }
         group.setUpdatedAt(OffsetDateTime.now());
         PermissionGroup saved = permissionGroupRepository.save(group);
-        invalidatePermissionCache(req.getUserIds(), group.getOrgId());
+        invalidatePermissionCache(memberIds, group.getOrgId());
         auditService.recordInfo("PERMISSION_GROUP", groupId, "GROUP_MEMBERS_ADDED", null, saved);
         return saved;
     }
 
+    /**
+     * Persists a new permission group. The handler converts the request DTO to a
+     * {@link PermissionGroup} entity via the mapper before calling here.
+     */
     @Transactional
-    public PermissionGroup createPermissionGroup(CreatePermissionGroupRequestDto req) {
-        UUID orgId = TenantContext.getRequiredOrgId();
-        PermissionGroup group = PermissionGroup.builder()
-                .orgId(orgId)
-                .name(req.getName())
-                .description(req.getDescription())
-                .createdAt(OffsetDateTime.now())
-                .updatedAt(OffsetDateTime.now())
-                .build();
-
+    public PermissionGroup createPermissionGroup(PermissionGroup group) {
         PermissionGroup saved = permissionGroupRepository.save(group);
         auditService.recordInfo("PERMISSION_GROUP", saved.getId(),
                 "PERMISSION_GROUP_CREATED", null, saved);
@@ -111,11 +109,19 @@ public class PermissionGroupsService {
         auditService.recordInfo("PERMISSION_GROUP", groupId, "GROUP_MEMBER_REMOVED", null, null);
     }
 
+    /**
+     * Applies name/description updates to an existing permission group.
+     * The handler extracts the fields from the request DTO before calling here.
+     *
+     * @param groupId     target group identifier
+     * @param name        new name, or {@code null} to leave unchanged
+     * @param description new description, or {@code null} to leave unchanged
+     */
     @Transactional
-    public PermissionGroup updatePermissionGroup(UUID groupId, UpdatePermissionGroupRequestDto req) {
+    public PermissionGroup updatePermissionGroup(UUID groupId, String name, String description) {
         PermissionGroup group = loadGroup(groupId);
-        if (req.getName() != null)        group.setName(req.getName());
-        if (req.getDescription() != null) group.setDescription(req.getDescription());
+        if (name != null)        group.setName(name);
+        if (description != null) group.setDescription(description);
         group.setUpdatedAt(OffsetDateTime.now());
         PermissionGroup saved = permissionGroupRepository.save(group);
         List<UUID> affectedUserIds = saved.getMembers().stream().map(User::getId).toList();

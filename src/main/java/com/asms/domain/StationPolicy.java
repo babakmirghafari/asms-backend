@@ -1,6 +1,9 @@
 package com.asms.domain;
 
+import com.asms.domain.enums.StationPolicyStatus;
+import com.asms.domain.enums.converter.StationPolicyStatusConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -45,7 +48,8 @@ public class StationPolicy {
     private String description;
 
     @Column(name = "status", nullable = false)
-    private String status;
+    @Convert(converter = StationPolicyStatusConverter.class)
+    private StationPolicyStatus status;
 
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "allowed_ips", columnDefinition = "text[]")

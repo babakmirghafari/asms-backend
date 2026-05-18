@@ -38,21 +38,24 @@ public class AlertsHandler implements AlertsApiDelegate {
     @Override
     public ResponseEntity<AlertDto> acknowledgeAlert(
             UUID alertId, AcknowledgeAlertRequestDto acknowledgeAlertRequestDto) {
-        Alert alert = alertsService.acknowledgeAlert(alertId, acknowledgeAlertRequestDto);
+        Alert alert = alertsService.acknowledgeAlert(alertId);
         return ResponseEntity.ok(alertMapper.toDto(alert));
     }
 
     @Override
     public ResponseEntity<AlertDto> resolveAlert(
             UUID alertId, ResolveAlertRequestDto resolveAlertRequestDto) {
-        Alert alert = alertsService.resolveAlert(alertId, resolveAlertRequestDto);
+        String note = resolveAlertRequestDto != null ? resolveAlertRequestDto.getNote() : null;
+        Alert alert = alertsService.resolveAlert(alertId, note);
         return ResponseEntity.ok(alertMapper.toDto(alert));
     }
 
     @Override
     public ResponseEntity<AlertDto> escalateAlert(
             UUID alertId, EscalateAlertRequestDto escalateAlertRequestDto) {
-        Alert alert = alertsService.escalateAlert(alertId, escalateAlertRequestDto);
+        String reason = escalateAlertRequestDto != null ? escalateAlertRequestDto.getReason() : null;
+        String target = escalateAlertRequestDto != null ? escalateAlertRequestDto.getEscalateTo() : null;
+        Alert alert = alertsService.escalateAlert(alertId, reason, target);
         return ResponseEntity.ok(alertMapper.toDto(alert));
     }
 

@@ -2,6 +2,7 @@ package com.asms.handler;
 
 import com.asms.api.ApplicationsApiDelegate;
 import com.asms.domain.Application;
+import com.asms.domain.enums.ConnectorType;
 import com.asms.mapper.ApplicationMapper;
 import com.asms.model.ApplicationCredentialDto;
 import com.asms.model.ApplicationDto;
@@ -38,7 +39,8 @@ public class ApplicationsHandler implements ApplicationsApiDelegate {
     @Override
     public ResponseEntity<ApplicationDto> createApplication(
             CreateApplicationRequestDto createApplicationRequestDto) {
-        Application app = applicationsService.createApplication(createApplicationRequestDto);
+        Application entity = applicationMapper.toApplicationEntity(createApplicationRequestDto);
+        Application app = applicationsService.createApplication(entity);
         return ResponseEntity.status(201).body(applicationMapper.toDto(app));
     }
 
@@ -56,7 +58,8 @@ public class ApplicationsHandler implements ApplicationsApiDelegate {
     @Override
     public ResponseEntity<PagedResponseDto> listApplications(
             Integer page, Integer size, UUID organizationId, String type) {
-        Page<Application> apps = applicationsService.listApplications(page, size, organizationId, type);
+        ConnectorType connectorType = type != null ? ConnectorType.valueOf(type) : null;
+        Page<Application> apps = applicationsService.listApplications(page, size, organizationId, connectorType);
         List<ApplicationDto> dtos = apps.getContent().stream().map(applicationMapper::toDto).toList();
         return ResponseEntity.ok(PageResponseBuilder.build(dtos, apps));
     }
@@ -66,7 +69,12 @@ public class ApplicationsHandler implements ApplicationsApiDelegate {
         RotateSecretResult result = applicationsService.rotateApplicationSecret(applicationId);
         ApplicationCredentialDto creds = new ApplicationCredentialDto();
         creds.setApplicationId(result.applicationId());
-        creds.setCredentialType(ApplicationCredentialDto.CredentialTypeEnum.fromValue(result.credentialType()));
+        // credentialType from service is the enum name (e.g. "OIDC") — map to CredentialTypeEnum
+        try {
+            creds.setCredentialType(ApplicationCredentialDto.CredentialTypeEnum.fromValue(result.credentialType()));
+        } catch (IllegalArgumentException e) {
+            creds.setCredentialType(ApplicationCredentialDto.CredentialTypeEnum.CLIENT_SECRET);
+        }
         creds.setSecret(result.secret());
         creds.setExpiresAt(result.expiresAt());
         return ResponseEntity.ok(creds);
@@ -75,7 +83,8 @@ public class ApplicationsHandler implements ApplicationsApiDelegate {
     @Override
     public ResponseEntity<ApplicationDto> updateApplication(
             UUID applicationId, UpdateApplicationRequestDto updateApplicationRequestDto) {
-        Application app = applicationsService.updateApplication(applicationId, updateApplicationRequestDto);
+        Application patch = applicationMapper.toApplicationPatch(updateApplicationRequestDto);
+        Application app = applicationsService.updateApplication(applicationId, patch);
         return ResponseEntity.ok(applicationMapper.toDto(app));
     }
 

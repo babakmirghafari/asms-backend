@@ -62,7 +62,9 @@ public class AuditLogsHandler implements AuditLogsApiDelegate {
     @Override
     public ResponseEntity<AuditExportResponseDto> requestAuditExport(
             AuditExportRequestDto auditExportRequestDto) {
-        UUID exportId = auditLogsService.requestAuditExport(auditExportRequestDto);
+        // Fields from auditExportRequestDto (organizationId, from, to, actions) would be used
+        // when the async export job is implemented in v2. For now we stub the export ID.
+        UUID exportId = auditLogsService.requestAuditExport();
         AuditExportResponseDto dto = new AuditExportResponseDto();
         dto.setExportId(exportId);
         dto.setStatus(AuditExportResponseDto.StatusEnum.PENDING);

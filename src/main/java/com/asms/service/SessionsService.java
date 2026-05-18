@@ -4,7 +4,6 @@ import com.asms.constant.AuditActions;
 import com.asms.domain.Session;
 import com.asms.domain.enums.SessionStatus;
 import com.asms.exception.ResourceNotFoundException;
-import com.asms.model.RevokeAllSessionsRequestDto;
 import com.asms.repository.SessionRepository;
 import com.asms.security.TenantContext;
 import lombok.RequiredArgsConstructor;
@@ -48,14 +47,16 @@ public class SessionsService {
 
     /**
      * Revokes all active sessions for a user.
+     * The handler extracts the userId from the request DTO before calling here.
      *
+     * @param userId the user whose active sessions should be revoked
      * @return number of sessions revoked
      */
     @Transactional
-    public int revokeAllSessions(RevokeAllSessionsRequestDto req) {
+    public int revokeAllSessions(UUID userId) {
         int revoked = sessionRepository.revokeAllForUser(
-                req.getUserId(), OffsetDateTime.now(), SessionStatus.REVOKED, SessionStatus.ACTIVE);
-        auditService.recordWarning("SESSION", req.getUserId(),
+                userId, OffsetDateTime.now(), SessionStatus.REVOKED, SessionStatus.ACTIVE);
+        auditService.recordWarning("SESSION", userId,
                 AuditActions.ALL_SESSIONS_REVOKED, null, "revoked=" + revoked);
         return revoked;
     }

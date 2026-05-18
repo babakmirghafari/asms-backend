@@ -2,10 +2,8 @@ package com.asms.service;
 
 import com.asms.domain.Membership;
 import com.asms.domain.enums.MembershipStatus;
-import com.asms.domain.enums.UserRole;
 import com.asms.exception.AccessDeniedException;
 import com.asms.exception.ResourceNotFoundException;
-import com.asms.model.CreateMembershipRequestDto;
 import com.asms.repository.MembershipRepository;
 import com.asms.security.TenantContext;
 import lombok.RequiredArgsConstructor;
@@ -32,16 +30,12 @@ public class MembershipsService {
     private final MembershipRepository membershipRepository;
     private final AuditService auditService;
 
+    /**
+     * Persists a new membership. The handler converts the request DTO to a
+     * {@link Membership} entity via the mapper before calling here.
+     */
     @Transactional
-    public Membership createMembership(CreateMembershipRequestDto req) {
-        Membership membership = Membership.builder()
-                .userId(req.getUserId())
-                .orgId(req.getOrganizationId())
-                .role(UserRole.MEMBER)
-                .status(MembershipStatus.ACTIVE)
-                .createdAt(OffsetDateTime.now())
-                .updatedAt(OffsetDateTime.now())
-                .build();
+    public Membership createMembership(Membership membership) {
         Membership saved = membershipRepository.save(membership);
         auditService.recordInfo("MEMBERSHIP", saved.getId(), "MEMBERSHIP_CREATED", null, saved);
         return saved;

@@ -2,7 +2,6 @@ package com.asms.service;
 
 import com.asms.domain.AuditLog;
 import com.asms.exception.ResourceNotFoundException;
-import com.asms.model.AuditExportRequestDto;
 import com.asms.repository.AuditLogRepository;
 import com.asms.repository.AuditLogSpecifications;
 import com.asms.security.TenantContext;
@@ -62,8 +61,11 @@ public class AuditLogsService {
     /**
      * Initiates an async export — returns the export ID and initial PENDING status.
      * Async processing deferred to v2 (ADR-009).
+     *
+     * <p>The handler extracts any relevant filter fields from the request DTO before calling here.
+     * No DTO crosses the service boundary.
      */
-    public UUID requestAuditExport(AuditExportRequestDto req) {
+    public UUID requestAuditExport() {
         // Async export deferred to v2. Return a stub UUID.
         return UUID.randomUUID();
     }

@@ -1,54 +1,98 @@
 package com.asms.mapper;
 
 import com.asms.domain.Application;
+import com.asms.domain.enums.ApplicationStatus;
+import com.asms.domain.enums.ConnectorType;
+import com.asms.domain.enums.IntegrationHealthStatus;
 import com.asms.model.ApplicationDto;
+import com.asms.model.CreateApplicationRequestDto;
+import com.asms.model.UpdateApplicationRequestDto;
+import com.asms.security.TenantContext;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants;
 import org.mapstruct.Named;
+import org.mapstruct.ValueMapping;
+
+import java.time.OffsetDateTime;
 
 /**
  * MapStruct mapper for {@link Application} domain entity ↔ {@link ApplicationDto} contract DTO.
  *
  * <p>Generated implementation is a Spring component — inject via constructor injection.
  * Handlers use this mapper; services never touch DTOs directly.
+ *
+ * <p>Enum conversions use {@code @ValueMapping}: domain enum → DTO enum by name.
+ * ConnectorType names match ApplicationDto.ConnectorTypeEnum names exactly (OIDC, SAML, API_TOKEN).
+ * ApplicationStatus names match ApplicationDto.StatusEnum names exactly (ACTIVE, INACTIVE, SUSPENDED).
+ * IntegrationHealthStatus names match ApplicationDto.IntegrationHealthStatusEnum names exactly.
  */
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 public interface ApplicationMapper {
 
     @Mapping(target = "organizationId", source = "orgId")
-    @Mapping(target = "connectorType", source = "type", qualifiedByName = "stringToConnectorTypeEnum")
-    @Mapping(target = "status", source = "status", qualifiedByName = "stringToStatusEnum")
-    @Mapping(target = "integrationHealthStatus", source = "integrationHealthStatus", qualifiedByName = "stringToHealthStatusEnum")
+    @Mapping(target = "connectorType", source = "type")
+    @Mapping(target = "status", source = "status")
+    @Mapping(target = "integrationHealthStatus", source = "integrationHealthStatus")
     ApplicationDto toDto(Application application);
 
-    @Named("stringToConnectorTypeEnum")
-    static ApplicationDto.ConnectorTypeEnum stringToConnectorTypeEnum(String type) {
-        if (type == null) return null;
-        try {
-            return ApplicationDto.ConnectorTypeEnum.fromValue(type);
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
+    @ValueMapping(source = "OIDC", target = "OIDC")
+    @ValueMapping(source = "SAML", target = "SAML")
+    @ValueMapping(source = "API_TOKEN", target = "API_TOKEN")
+    ApplicationDto.ConnectorTypeEnum toConnectorTypeEnum(ConnectorType type);
+
+    @ValueMapping(source = "ACTIVE", target = "ACTIVE")
+    @ValueMapping(source = "INACTIVE", target = "INACTIVE")
+    @ValueMapping(source = "SUSPENDED", target = "SUSPENDED")
+    @ValueMapping(source = MappingConstants.ANY_REMAINING, target = MappingConstants.NULL)
+    ApplicationDto.StatusEnum toStatusEnum(ApplicationStatus status);
+
+    @ValueMapping(source = "HEALTHY", target = "HEALTHY")
+    @ValueMapping(source = "DEGRADED", target = "DEGRADED")
+    @ValueMapping(source = "UNKNOWN", target = "UNKNOWN")
+    @ValueMapping(source = "NEVER_CONNECTED", target = "NEVER_CONNECTED")
+    ApplicationDto.IntegrationHealthStatusEnum toIntegrationHealthStatusEnum(IntegrationHealthStatus status);
+
+    /**
+     * Converts a {@link CreateApplicationRequestDto} to a new {@link Application} entity.
+     * The org ID is sourced from the DTO if present, otherwise from {@link TenantContext}.
+     */
+    @Named("toApplicationEntity")
+    default Application toApplicationEntity(CreateApplicationRequestDto dto) {
+        if (dto == null) return Application.builder().build();
+        java.util.UUID orgId = dto.getOrganizationId() != null
+                ? dto.getOrganizationId()
+                : TenantContext.getRequiredOrgId();
+        ConnectorType type = dto.getConnectorType() != null
+                ? ConnectorType.valueOf(dto.getConnectorType().getValue())
+                : null;
+        return Application.builder()
+                .orgId(orgId)
+                .name(dto.getName())
+                .type(type)
+                .redirectUris(dto.getRedirectUris())
+                .samlEntityId(dto.getSamlEntityId())
+                .status(ApplicationStatus.ACTIVE)
+                .integrationHealthStatus(IntegrationHealthStatus.NEVER_CONNECTED)
+                .createdAt(OffsetDateTime.now())
+                .updatedAt(OffsetDateTime.now())
+                .build();
     }
 
-    @Named("stringToStatusEnum")
-    static ApplicationDto.StatusEnum stringToStatusEnum(String status) {
-        if (status == null) return null;
-        try {
-            return ApplicationDto.StatusEnum.fromValue(status);
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
-    }
-
-    @Named("stringToHealthStatusEnum")
-    static ApplicationDto.IntegrationHealthStatusEnum stringToHealthStatusEnum(String status) {
-        if (status == null) return null;
-        try {
-            return ApplicationDto.IntegrationHealthStatusEnum.fromValue(status);
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
+    /**
+     * Converts an {@link UpdateApplicationRequestDto} to a partial {@link Application} patch.
+     * Only non-null DTO fields are populated; the service applies them selectively.
+     */
+    @Named("toApplicationPatch")
+    default Application toApplicationPatch(UpdateApplicationRequestDto dto) {
+        if (dto == null) return Application.builder().build();
+        ApplicationStatus status = dto.getStatus() != null
+                ? ApplicationStatus.valueOf(dto.getStatus().getValue())
+                : null;
+        return Application.builder()
+                .name(dto.getName())
+                .redirectUris(dto.getRedirectUris())
+                .status(status)
+                .build();
     }
 }

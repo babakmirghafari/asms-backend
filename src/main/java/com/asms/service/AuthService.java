@@ -72,6 +72,9 @@ public class AuthService {
     /**
      * Authenticates the user, enforces lockout, and verifies the password with BCrypt.
      *
+     * <p>Auth boundary: handler passes request DTO directly — no domain entity exists for credentials/tokens.
+     * Credentials (username, password) are transient data that should never be persisted as a domain object.
+     *
      * @return {@link LoginResult} with the authenticated user and next-step status
      * @throws AuthenticationException if credentials are invalid or user status is wrong
      * @throws AccountLockedException  if the account is temporarily locked
@@ -157,6 +160,8 @@ public class AuthService {
     /**
      * Handles password change (force_password_change flow).
      *
+     * <p>Auth boundary: handler passes request DTO directly — no domain entity exists for credentials/tokens.
+     *
      * @return updated {@link User}
      */
     @Transactional
@@ -203,6 +208,8 @@ public class AuthService {
     /**
      * Selects an organisation for the authenticated user and issues a signed JWT access token.
      *
+     * <p>Auth boundary: handler passes request DTO directly — no domain entity exists for credentials/tokens.
+     *
      * @return {@link OrgSelectionResult} with the JWT and expiry
      */
     @Transactional
@@ -241,6 +248,8 @@ public class AuthService {
 
     /**
      * Stubs MFA verification — TOTP deferred to security phase.
+     *
+     * <p>Auth boundary: handler passes request DTO directly — no domain entity exists for credentials/tokens.
      */
     public MfaVerifyResponseDto verifyMfa(MfaVerifyRequestDto req) {
         MfaVerifyResponseDto response = new MfaVerifyResponseDto();

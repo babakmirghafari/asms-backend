@@ -1,6 +1,13 @@
 package com.asms.domain;
 
+import com.asms.domain.enums.ApplicationStatus;
+import com.asms.domain.enums.ConnectorType;
+import com.asms.domain.enums.IntegrationHealthStatus;
+import com.asms.domain.enums.converter.ApplicationStatusConverter;
+import com.asms.domain.enums.converter.ConnectorTypeConverter;
+import com.asms.domain.enums.converter.IntegrationHealthStatusConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -39,7 +46,8 @@ public class Application {
     private String name;
 
     @Column(name = "type", nullable = false)
-    private String type;
+    @Convert(converter = ConnectorTypeConverter.class)
+    private ConnectorType type;
 
     @Column(name = "client_id")
     private String clientId;
@@ -55,10 +63,12 @@ public class Application {
     private String samlEntityId;
 
     @Column(name = "status", nullable = false)
-    private String status;
+    @Convert(converter = ApplicationStatusConverter.class)
+    private ApplicationStatus status;
 
     @Column(name = "integration_health_status", nullable = false)
-    private String integrationHealthStatus;
+    @Convert(converter = IntegrationHealthStatusConverter.class)
+    private IntegrationHealthStatus integrationHealthStatus;
 
     @Column(name = "secret_expires_at")
     private OffsetDateTime secretExpiresAt;

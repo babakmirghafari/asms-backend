@@ -1,5 +1,6 @@
 package com.asms.domain;
 
+import com.asms.domain.enums.PermissionImportStatus;
 import com.asms.domain.enums.converter.PermissionImportStatusConverter;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;

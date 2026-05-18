@@ -2,15 +2,21 @@
 -- Multi-tenant isolation: all tables include org_id (ADR-006, RISK-002)
 -- Timestamps: TIMESTAMPTZ for timezone-aware audit (ADR-009)
 -- Enum columns: SMALLINT with integer keys from ConvertableEnum (see domain/converter)
---   UserStatus:          PENDING_ACTIVATION=1, ACTIVE=2, INACTIVE=3, LOCKED=4, TEMP_PASSWORD=5, PENDING_MFA_ENROLLMENT=6, DELETED=7
---   UserRole:            SUPER_ADMIN=1, ADMIN=2, SECURITY_ANALYST=3, MEMBER=4
---   MembershipStatus:    PENDING=1, ACTIVE=2, SUSPENDED=3, REMOVED=4
---   PermissionStatus:    DRAFT=1, ACTIVE=2, DEPRECATED=3
---   SessionStatus:       ACTIVE=1, EXPIRED=2, REVOKED=3
---   AlertSeverity:       LOW=1, MEDIUM=2, HIGH=3, CRITICAL=4
---   AlertStatus:         OPEN=1, ACKNOWLEDGED=2, INVESTIGATING=3, ESCALATED=4, RESOLVED=5, SUPPRESSED=6
---   AuditSeverity:       INFO=1, WARNING=2, CRITICAL=3
---   PermissionImportStatus: PENDING_COMMIT=1, BLOCKED=2, COMMITTED=3, EXPIRED=4
+--   UserStatus:              PENDING_ACTIVATION=1, ACTIVE=2, INACTIVE=3, LOCKED=4, TEMP_PASSWORD=5, PENDING_MFA_ENROLLMENT=6, DELETED=7
+--   UserRole:                SUPER_ADMIN=1, ADMIN=2, SECURITY_ANALYST=3, MEMBER=4
+--   MembershipStatus:        PENDING=1, ACTIVE=2, SUSPENDED=3, REMOVED=4
+--   PermissionStatus:        DRAFT=1, ACTIVE=2, DEPRECATED=3
+--   SessionStatus:           ACTIVE=1, EXPIRED=2, REVOKED=3
+--   AlertSeverity:           LOW=1, MEDIUM=2, HIGH=3, CRITICAL=4
+--   AlertStatus:             OPEN=1, ACKNOWLEDGED=2, INVESTIGATING=3, ESCALATED=4, RESOLVED=5, SUPPRESSED=6
+--   AuditSeverity:           INFO=1, WARNING=2, CRITICAL=3
+--   PermissionImportStatus:  PENDING_COMMIT=1, BLOCKED=2, COMMITTED=3, EXPIRED=4
+--   ConnectorType:           OIDC=1, SAML=2, API_TOKEN=3
+--   ApplicationStatus:       ACTIVE=1, INACTIVE=2, SUSPENDED=3, DELETED=4
+--   IntegrationHealthStatus: HEALTHY=1, DEGRADED=2, UNKNOWN=3, NEVER_CONNECTED=4
+--   StationPolicyStatus:     ACTIVE=1, INACTIVE=2
+--   OrganizationStatus:      ACTIVE=1, SUSPENDED=2, DELETED=3
+--   AlertRiskLevel:          LOW=1, MEDIUM=2, HIGH=3, CRITICAL=4
 
 -- ─── ORGANIZATIONS ─────────────────────────────────────────────────────────
 
@@ -23,10 +29,9 @@ CREATE TABLE organizations (
     data_residency  VARCHAR(50),
     logo_url        TEXT,
     primary_color   VARCHAR(7),
-    status          VARCHAR(20)  NOT NULL DEFAULT 'ACTIVE',
+    status          SMALLINT     NOT NULL DEFAULT 1,  -- OrganizationStatus: 1=ACTIVE
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT now(),
-    updated_at      TIMESTAMPTZ  NOT NULL DEFAULT now(),
-    CONSTRAINT chk_org_status CHECK (status IN ('ACTIVE', 'SUSPENDED', 'DELETED'))
+    updated_at      TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
 
 CREATE INDEX idx_organizations_parent ON organizations(parent_org_id);
@@ -148,20 +153,17 @@ CREATE TABLE applications (
     id                          UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
     org_id                      UUID         NOT NULL REFERENCES organizations(id),
     name                        VARCHAR(255) NOT NULL,
-    type                        VARCHAR(20)  NOT NULL,
+    type                        SMALLINT     NOT NULL,                -- ConnectorType: OIDC=1, SAML=2, API_TOKEN=3
     client_id                   VARCHAR(255),
     client_secret_hash          TEXT,
     redirect_uris               TEXT[],
-    status                      VARCHAR(20)  NOT NULL DEFAULT 'ACTIVE',
+    status                      SMALLINT     NOT NULL DEFAULT 1,     -- ApplicationStatus: 1=ACTIVE
     secret_expires_at           TIMESTAMPTZ,
-    integration_health_status   VARCHAR(25)  NOT NULL DEFAULT 'UNKNOWN',
+    integration_health_status   SMALLINT     NOT NULL DEFAULT 3,     -- IntegrationHealthStatus: 3=UNKNOWN
     saml_entity_id              VARCHAR(255),
     created_at                  TIMESTAMPTZ  NOT NULL DEFAULT now(),
     updated_at                  TIMESTAMPTZ  NOT NULL DEFAULT now(),
-    UNIQUE (org_id, name),
-    CONSTRAINT chk_app_type CHECK (type IN ('OIDC', 'SAML', 'API_TOKEN')),
-    CONSTRAINT chk_app_integration_health
-        CHECK (integration_health_status IN ('HEALTHY', 'DEGRADED', 'UNKNOWN', 'NEVER_CONNECTED'))
+    UNIQUE (org_id, name)
 );
 
 CREATE INDEX idx_applications_org ON applications(org_id);
@@ -174,14 +176,13 @@ CREATE TABLE station_policies (
     user_id         UUID         REFERENCES users(id),
     name            VARCHAR(255) NOT NULL,
     description     TEXT,
-    status          VARCHAR(20)  NOT NULL DEFAULT 'ACTIVE',
+    status          SMALLINT     NOT NULL DEFAULT 1,  -- StationPolicyStatus: 1=ACTIVE
     allowed_ips     TEXT[],
     allowed_days    SMALLINT[],
     work_hour_start SMALLINT,
     work_hour_end   SMALLINT,
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT now(),
-    updated_at      TIMESTAMPTZ  NOT NULL DEFAULT now(),
-    CONSTRAINT chk_station_policy_status CHECK (status IN ('ACTIVE', 'INACTIVE', 'DELETED'))
+    updated_at      TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
 
 CREATE INDEX idx_station_policies_user ON station_policies(user_id);
@@ -243,7 +244,7 @@ CREATE TABLE alerts (
     description         TEXT,
     metadata            JSONB,
     risk_score          NUMERIC(5,2),
-    risk_level          VARCHAR(10),
+    risk_level          SMALLINT,                         -- AlertRiskLevel: LOW=1, MEDIUM=2, HIGH=3, CRITICAL=4
     acknowledged_by     UUID         REFERENCES users(id),
     acknowledged_at     TIMESTAMPTZ,
     resolved_by         UUID         REFERENCES users(id),
@@ -255,8 +256,6 @@ CREATE TABLE alerts (
     escalated_to        VARCHAR(100),
     created_at          TIMESTAMPTZ  NOT NULL DEFAULT now(),
     updated_at          TIMESTAMPTZ  NOT NULL DEFAULT now(),
-    CONSTRAINT chk_alert_risk_level
-        CHECK (risk_level IN ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL') OR risk_level IS NULL),
     CONSTRAINT chk_alert_risk_score
         CHECK (risk_score >= 0 AND risk_score <= 100 OR risk_score IS NULL)
 );

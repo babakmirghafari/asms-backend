@@ -20,7 +20,7 @@ public interface OrganizationRepository extends JpaRepository<Organization, UUID
 
     @Query(value = """
             SELECT * FROM organizations
-            WHERE status != 'DELETED'
+            WHERE status != 3
               AND (:search IS NULL
                    OR LOWER(name) LIKE LOWER(CONCAT('%', :search, '%'))
                    OR LOWER(slug) LIKE LOWER(CONCAT('%', :search, '%')))
@@ -28,7 +28,7 @@ public interface OrganizationRepository extends JpaRepository<Organization, UUID
             """,
             countQuery = """
             SELECT COUNT(*) FROM organizations
-            WHERE status != 'DELETED'
+            WHERE status != 3
               AND (:search IS NULL
                    OR LOWER(name) LIKE LOWER(CONCAT('%', :search, '%'))
                    OR LOWER(slug) LIKE LOWER(CONCAT('%', :search, '%')))

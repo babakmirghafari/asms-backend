@@ -2,8 +2,8 @@ package com.asms.service;
 
 import com.asms.domain.Application;
 import com.asms.exception.ResourceNotFoundException;
-import com.asms.model.CreateApplicationRequestDto;
-import com.asms.model.UpdateApplicationRequestDto;
+import com.asms.domain.enums.ApplicationStatus;
+import com.asms.domain.enums.ConnectorType;
 import com.asms.repository.ApplicationRepository;
 import com.asms.security.TenantContext;
 import lombok.RequiredArgsConstructor;
@@ -33,20 +33,12 @@ public class ApplicationsService {
     public record RotateSecretResult(UUID applicationId, String credentialType,
                                       String secret, OffsetDateTime expiresAt) {}
 
+    /**
+     * Persists a new application. The handler converts the request DTO to an
+     * {@link Application} entity via the mapper before calling here.
+     */
     @Transactional
-    public Application createApplication(CreateApplicationRequestDto req) {
-        UUID orgId = req.getOrganizationId() != null ? req.getOrganizationId() : TenantContext.getRequiredOrgId();
-        Application app = Application.builder()
-                .orgId(orgId)
-                .name(req.getName())
-                .type(req.getConnectorType().getValue())
-                .redirectUris(req.getRedirectUris())
-                .samlEntityId(req.getSamlEntityId())
-                .status("ACTIVE")
-                .integrationHealthStatus("NEVER_CONNECTED")
-                .createdAt(OffsetDateTime.now())
-                .updatedAt(OffsetDateTime.now())
-                .build();
+    public Application createApplication(Application app) {
         Application saved = applicationRepository.save(app);
         auditService.recordInfo("APPLICATION", saved.getId(), "APPLICATION_CREATED", null, saved);
         return saved;
@@ -56,7 +48,7 @@ public class ApplicationsService {
     public void deleteApplication(UUID applicationId) {
         Application app = loadApp(applicationId);
         Application before = cloneForAudit(app);
-        app.setStatus("DELETED");
+        app.setStatus(ApplicationStatus.DELETED);
         app.setUpdatedAt(OffsetDateTime.now());
         applicationRepository.save(app);
         auditService.recordInfo("APPLICATION", applicationId, "APPLICATION_DELETED", before, app);
@@ -68,7 +60,7 @@ public class ApplicationsService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Application> listApplications(Integer page, Integer size, UUID organizationId, String type) {
+    public Page<Application> listApplications(Integer page, Integer size, UUID organizationId, ConnectorType type) {
         UUID orgId = organizationId != null ? organizationId : TenantContext.getRequiredOrgId();
         return applicationRepository.findFiltered(
                 orgId, type, PageRequest.of(page != null ? page : 0, size != null ? size : 20));
@@ -83,16 +75,23 @@ public class ApplicationsService {
         app.setUpdatedAt(OffsetDateTime.now());
         applicationRepository.save(app);
         auditService.recordWarning("APPLICATION", applicationId, "APPLICATION_SECRET_ROTATED", null, null);
-        return new RotateSecretResult(applicationId, app.getType(), newClientId, app.getSecretExpiresAt());
+        return new RotateSecretResult(applicationId, app.getType().name(), newClientId, app.getSecretExpiresAt());
     }
 
+    /**
+     * Applies updates to an existing application.
+     * The handler extracts fields from the request DTO before calling here.
+     *
+     * @param applicationId target application identifier
+     * @param patch         partial Application carrying the fields to update (null fields not applied)
+     */
     @Transactional
-    public Application updateApplication(UUID applicationId, UpdateApplicationRequestDto req) {
+    public Application updateApplication(UUID applicationId, Application patch) {
         Application app = loadApp(applicationId);
         Application before = cloneForAudit(app);
-        if (req.getName() != null)         app.setName(req.getName());
-        if (req.getRedirectUris() != null) app.setRedirectUris(req.getRedirectUris());
-        if (req.getStatus() != null)       app.setStatus(req.getStatus().getValue());
+        if (patch.getName() != null)         app.setName(patch.getName());
+        if (patch.getRedirectUris() != null) app.setRedirectUris(patch.getRedirectUris());
+        if (patch.getStatus() != null)       app.setStatus(patch.getStatus());
         app.setUpdatedAt(OffsetDateTime.now());
         Application saved = applicationRepository.save(app);
         auditService.recordInfo("APPLICATION", applicationId, "APPLICATION_UPDATED", before, saved);

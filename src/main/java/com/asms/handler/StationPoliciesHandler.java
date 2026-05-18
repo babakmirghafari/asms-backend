@@ -36,7 +36,8 @@ public class StationPoliciesHandler implements StationPoliciesApiDelegate {
     @Override
     public ResponseEntity<StationPolicyDto> createStationPolicy(
             CreateStationPolicyRequestDto createStationPolicyRequestDto) {
-        StationPolicy policy = stationPoliciesService.createStationPolicy(createStationPolicyRequestDto);
+        StationPolicy entity = stationPolicyMapper.toStationPolicyEntity(createStationPolicyRequestDto);
+        StationPolicy policy = stationPoliciesService.createStationPolicy(entity);
         return ResponseEntity.status(201).body(stationPolicyMapper.toDto(policy));
     }
 
@@ -62,7 +63,8 @@ public class StationPoliciesHandler implements StationPoliciesApiDelegate {
     @Override
     public ResponseEntity<StationPolicyDto> updateStationPolicy(
             UUID policyId, UpdateStationPolicyRequestDto updateStationPolicyRequestDto) {
-        StationPolicy policy = stationPoliciesService.updateStationPolicy(policyId, updateStationPolicyRequestDto);
+        StationPolicy patch = stationPolicyMapper.toStationPolicyPatch(updateStationPolicyRequestDto);
+        StationPolicy policy = stationPoliciesService.updateStationPolicy(policyId, patch);
         return ResponseEntity.ok(stationPolicyMapper.toDto(policy));
     }
 

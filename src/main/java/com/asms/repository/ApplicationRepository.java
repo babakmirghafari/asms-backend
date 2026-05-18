@@ -1,6 +1,8 @@
 package com.asms.repository;
 
 import com.asms.domain.Application;
+import com.asms.domain.enums.ApplicationStatus;
+import com.asms.domain.enums.ConnectorType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -21,10 +23,10 @@ public interface ApplicationRepository extends JpaRepository<Application, UUID> 
     @Query("""
             SELECT a FROM Application a
             WHERE a.orgId = :orgId
-              AND a.status != 'DELETED'
+              AND a.status != com.asms.domain.enums.ApplicationStatus.DELETED
               AND (:type IS NULL OR a.type = :type)
             """)
     Page<Application> findFiltered(@Param("orgId") UUID orgId,
-                                    @Param("type") String type,
+                                    @Param("type") ConnectorType type,
                                     Pageable pageable);
 }

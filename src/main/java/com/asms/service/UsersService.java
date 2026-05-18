@@ -6,8 +6,6 @@ import com.asms.domain.enums.MembershipStatus;
 import com.asms.domain.enums.UserStatus;
 import com.asms.exception.ResourceNotFoundException;
 import com.asms.model.CreateUserRequestDto;
-import com.asms.model.UpdateUserRequestDto;
-import com.asms.model.UserStatusUpdateRequestDto;
 import com.asms.repository.UserRepository;
 import com.asms.security.TenantContext;
 import lombok.RequiredArgsConstructor;
@@ -82,25 +80,38 @@ public class UsersService {
                 PageRequest.of(page != null ? page : 0, size != null ? size : 20));
     }
 
+    /**
+     * Updates profile fields on an existing user. The handler converts the request DTO to a
+     * partial {@link User} carrying only the non-null fields and passes it here.
+     *
+     * @param userId target user identifier
+     * @param patch  partial User carrying fields to update (null fields are not applied)
+     */
     @Transactional
-    public User updateUser(UUID userId, UpdateUserRequestDto req) {
+    public User updateUser(UUID userId, User patch) {
         User user = loadUser(userId);
         User before = copyForAudit(user);
-        if (req.getFirstName() != null)   user.setFirstName(req.getFirstName());
-        if (req.getLastName() != null)    user.setLastName(req.getLastName());
-        if (req.getEmail() != null)       user.setEmail(req.getEmail());
-        if (req.getPhoneNumber() != null) user.setPhoneNumber(req.getPhoneNumber());
+        if (patch.getFirstName() != null)   user.setFirstName(patch.getFirstName());
+        if (patch.getLastName() != null)    user.setLastName(patch.getLastName());
+        if (patch.getEmail() != null)       user.setEmail(patch.getEmail());
+        if (patch.getPhoneNumber() != null) user.setPhoneNumber(patch.getPhoneNumber());
         user.setUpdatedAt(OffsetDateTime.now());
         User saved = userRepository.save(user);
         auditService.recordInfo("USER", userId, AuditActions.USER_UPDATED, before, saved);
         return saved;
     }
 
+    /**
+     * Applies a status transition to an existing user.
+     * The handler extracts the domain {@link UserStatus} from the request DTO and passes it here.
+     *
+     * @param userId    target user identifier
+     * @param newStatus the status to transition to
+     */
     @Transactional
-    public User updateUserStatus(UUID userId, UserStatusUpdateRequestDto req) {
+    public User updateUserStatus(UUID userId, UserStatus newStatus) {
         User user = loadUser(userId);
         User before = copyForAudit(user);
-        UserStatus newStatus = UserStatus.valueOf(req.getStatus().getValue());
         user.setStatus(newStatus);
         if (UserStatus.LOCKED == newStatus) {
             user.setLockedUntil(OffsetDateTime.now().plusMinutes(15));

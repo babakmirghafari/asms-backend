@@ -7,6 +7,7 @@ import com.asms.model.AuthPolicyDto;
 import com.asms.model.PagedResponseDto;
 import com.asms.model.UpdateAuthPolicyRequestDto;
 import com.asms.service.AuthPoliciesService;
+import com.asms.service.AuthPoliciesService.AuthPolicyPatch;
 import com.asms.util.PageResponseBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,7 +48,15 @@ public class AuthPoliciesHandler implements AuthPoliciesApiDelegate {
     @Override
     public ResponseEntity<AuthPolicyDto> updateAuthPolicy(
             UUID organizationId, UpdateAuthPolicyRequestDto updateAuthPolicyRequestDto) {
-        AuthPolicy policy = authPoliciesService.updateAuthPolicy(organizationId, updateAuthPolicyRequestDto);
+        AuthPolicyPatch patch = new AuthPolicyPatch(
+                updateAuthPolicyRequestDto != null ? updateAuthPolicyRequestDto.getMaxFailedLoginAttempts() : null,
+                updateAuthPolicyRequestDto != null ? updateAuthPolicyRequestDto.getMfaRequired() : null,
+                updateAuthPolicyRequestDto != null ? updateAuthPolicyRequestDto.getPasswordMinLength() : null,
+                updateAuthPolicyRequestDto != null ? updateAuthPolicyRequestDto.getPasswordRequiresUppercase() : null,
+                updateAuthPolicyRequestDto != null ? updateAuthPolicyRequestDto.getPasswordRequiresNumber() : null,
+                updateAuthPolicyRequestDto != null ? updateAuthPolicyRequestDto.getPasswordRequiresSpecial() : null,
+                updateAuthPolicyRequestDto != null ? updateAuthPolicyRequestDto.getSessionTimeoutMinutes() : null);
+        AuthPolicy policy = authPoliciesService.updateAuthPolicy(organizationId, patch);
         return ResponseEntity.ok(authPolicyMapper.toDto(policy));
     }
 

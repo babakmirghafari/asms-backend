@@ -2,14 +2,15 @@ package com.asms.handler;
 
 import com.asms.api.UsersApiDelegate;
 import com.asms.domain.User;
+import com.asms.domain.enums.UserStatus;
 import com.asms.mapper.UserMapper;
 import com.asms.model.CreateUserRequestDto;
 import com.asms.model.PagedResponseDto;
 import com.asms.model.UpdateUserRequestDto;
-import com.asms.util.PageResponseBuilder;
 import com.asms.model.UserDto;
 import com.asms.model.UserStatusUpdateRequestDto;
 import com.asms.service.UsersService;
+import com.asms.util.PageResponseBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -65,14 +66,16 @@ public class UsersHandler implements UsersApiDelegate {
 
     @Override
     public ResponseEntity<UserDto> updateUser(UUID userId, UpdateUserRequestDto updateUserRequestDto) {
-        User updated = usersService.updateUser(userId, updateUserRequestDto);
+        User patch = userMapper.toUserPatch(updateUserRequestDto);
+        User updated = usersService.updateUser(userId, patch);
         return ResponseEntity.ok(userMapper.toDto(updated));
     }
 
     @Override
     public ResponseEntity<UserDto> updateUserStatus(UUID userId,
             UserStatusUpdateRequestDto userStatusUpdateRequestDto) {
-        User updated = usersService.updateUserStatus(userId, userStatusUpdateRequestDto);
+        UserStatus newStatus = UserStatus.valueOf(userStatusUpdateRequestDto.getStatus().getValue());
+        User updated = usersService.updateUserStatus(userId, newStatus);
         return ResponseEntity.ok(userMapper.toDto(updated));
     }
 

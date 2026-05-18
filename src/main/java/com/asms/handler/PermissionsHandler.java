@@ -3,7 +3,8 @@ package com.asms.handler;
 import com.asms.api.PermissionsApiDelegate;
 import com.asms.domain.Permission;
 import com.asms.domain.PermissionImport;
-import com.asms.domain.PermissionImportStatus;
+import com.asms.domain.enums.PermissionImportStatus;
+import com.asms.domain.enums.PermissionStatus;
 import com.asms.mapper.PermissionMapper;
 import com.asms.model.CreatePermissionRequestDto;
 import com.asms.model.PagedResponseDto;
@@ -56,7 +57,8 @@ public class PermissionsHandler implements PermissionsApiDelegate {
     @Override
     public ResponseEntity<PermissionDto> createPermission(
             CreatePermissionRequestDto createPermissionRequestDto) {
-        Permission permission = permissionsService.createPermission(createPermissionRequestDto);
+        Permission entity = permissionMapper.toPermissionEntity(createPermissionRequestDto);
+        Permission permission = permissionsService.createPermission(entity);
         return ResponseEntity.status(201).body(permissionMapper.toDto(permission));
     }
 
@@ -85,8 +87,9 @@ public class PermissionsHandler implements PermissionsApiDelegate {
     @Override
     public ResponseEntity<PermissionDto> updatePermissionStatus(
             UUID permissionId, UpdatePermissionStatusRequestDto updatePermissionStatusRequestDto) {
-        Permission updated = permissionsService.updatePermissionStatus(
-                permissionId, updatePermissionStatusRequestDto);
+        PermissionStatus targetStatus = PermissionStatus.valueOf(
+                updatePermissionStatusRequestDto.getStatus().getValue());
+        Permission updated = permissionsService.updatePermissionStatus(permissionId, targetStatus);
         return ResponseEntity.ok(permissionMapper.toDto(updated));
     }
 
@@ -131,8 +134,9 @@ public class PermissionsHandler implements PermissionsApiDelegate {
     @Override
     public ResponseEntity<PermissionImportCommitResponseDto> commitPermissionsImport(
             PermissionImportCommitRequestDto permissionImportCommitRequestDto) {
-        ImportCommitResult result =
-                permissionsService.commitPermissionsImport(permissionImportCommitRequestDto);
+        UUID importId = permissionImportCommitRequestDto != null
+                ? permissionImportCommitRequestDto.getImportId() : null;
+        ImportCommitResult result = permissionsService.commitPermissionsImport(importId);
         PermissionImportCommitResponseDto response = new PermissionImportCommitResponseDto();
         response.setImportId(result.importId());
         response.setCommitted(result.committed());

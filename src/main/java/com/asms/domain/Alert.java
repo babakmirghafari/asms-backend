@@ -1,7 +1,9 @@
 package com.asms.domain;
 
+import com.asms.domain.enums.AlertRiskLevel;
 import com.asms.domain.enums.AlertSeverity;
 import com.asms.domain.enums.AlertStatus;
+import com.asms.domain.enums.converter.AlertRiskLevelConverter;
 import com.asms.domain.enums.converter.AlertSeverityConverter;
 import com.asms.domain.enums.converter.AlertStatusConverter;
 import jakarta.persistence.Column;
@@ -74,7 +76,8 @@ public class Alert {
     private BigDecimal riskScore;
 
     @Column(name = "risk_level")
-    private String riskLevel;
+    @Convert(converter = AlertRiskLevelConverter.class)
+    private AlertRiskLevel riskLevel;
 
     @Column(name = "resolved_by")
     private UUID resolvedBy;

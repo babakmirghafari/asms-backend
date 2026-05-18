@@ -3,17 +3,14 @@ package com.asms.service;
 import com.asms.constant.AuditActions;
 import com.asms.domain.Permission;
 import com.asms.domain.PermissionImport;
-import com.asms.domain.PermissionImportStatus;
+import com.asms.domain.enums.PermissionImportStatus;
 import com.asms.domain.enums.PermissionStatus;
 import com.asms.exception.AccessDeniedException;
 import com.asms.exception.ConflictException;
 import com.asms.exception.ResourceNotFoundException;
 import com.asms.exception.ValidationException;
-import com.asms.model.CreatePermissionRequestDto;
-import com.asms.model.PermissionImportCommitRequestDto;
 import com.asms.model.PermissionImportValidateResponseDtoIssuesInner;
 import com.asms.model.PermissionsSimulateRequestDto;
-import com.asms.model.UpdatePermissionStatusRequestDto;
 import com.asms.repository.PermissionImportRepository;
 import com.asms.repository.PermissionRepository;
 import com.asms.security.TenantContext;
@@ -71,28 +68,21 @@ public class PermissionsService {
 
     // ─── CRUD ────────────────────────────────────────────────────────────────
 
+    /**
+     * Persists a new permission. The handler validates naming and converts the request DTO
+     * to a {@link Permission} entity via the mapper before calling here.
+     *
+     * <p>Naming pattern validation is performed here because it is a domain invariant,
+     * not a presentation concern.
+     */
     @Transactional
-    public Permission createPermission(CreatePermissionRequestDto req) {
-        UUID orgId = TenantContext.getOrgId();
-        if (orgId == null) orgId = req.getOrganizationId();
-        if (orgId == null) throw new AccessDeniedException("No organization context");
-        log.debug("Create permission: {} in org: {}", req.getName(), orgId);
+    public Permission createPermission(Permission perm) {
+        log.debug("Create permission: {} in org: {}", perm.getName(), perm.getOrgId());
 
-        if (!req.getName().matches(NAMING_PATTERN)) {
+        if (!perm.getName().matches(NAMING_PATTERN)) {
             throw new ValidationException("INVALID_PERMISSION_NAME",
                     "Permission name must follow application.module.action format");
         }
-
-        Permission perm = Permission.builder()
-                .orgId(orgId)
-                .name(req.getName())
-                .description(req.getDescription())
-                .resource(req.getResource() != null ? req.getResource() : req.getName().split("\\.")[0])
-                .action(req.getAction() != null ? req.getAction().getValue() : "READ")
-                .status(PermissionStatus.DRAFT)
-                .createdAt(OffsetDateTime.now())
-                .updatedAt(OffsetDateTime.now())
-                .build();
 
         Permission saved = permissionRepository.save(perm);
         auditService.recordInfo("PERMISSION", saved.getId(),
@@ -131,11 +121,17 @@ public class PermissionsService {
 
     // ─── LIFECYCLE TRANSITION ────────────────────────────────────────────────
 
+    /**
+     * Applies a lifecycle status transition to a permission.
+     * The handler extracts the target {@link PermissionStatus} from the request DTO before calling here.
+     *
+     * @param permissionId target permission identifier
+     * @param targetStatus the status to transition to
+     */
     @Transactional
-    public Permission updatePermissionStatus(UUID permissionId, UpdatePermissionStatusRequestDto req) {
+    public Permission updatePermissionStatus(UUID permissionId, PermissionStatus targetStatus) {
         Permission perm = loadPermission(permissionId);
         PermissionStatus currentStatus = perm.getStatus();
-        PermissionStatus targetStatus = PermissionStatus.valueOf(req.getStatus().getValue());
 
         // Validate allowed transitions: DRAFT→ACTIVE, ACTIVE→DEPRECATED
         boolean allowed = (PermissionStatus.DRAFT == currentStatus && PermissionStatus.ACTIVE == targetStatus)
@@ -162,6 +158,14 @@ public class PermissionsService {
     public record SimulateResult(boolean granted, String permissionName, UUID userId,
                                   UUID organizationId, List<String> appliedPolicies, String reason) {}
 
+    /**
+     * Simulates whether a given permission is granted for a user in an org.
+     *
+     * <p>Intentional exception to the "no DTO in service" rule: this is a query/simulation
+     * operation with no persisted domain entity. The request carries multiple correlated fields
+     * (permissionName, userId, organizationId) that form a coherent query value object.
+     * Breaking it into primitives would reduce clarity without improving the architecture.
+     */
     @Transactional(readOnly = true)
     public SimulateResult simulatePermission(PermissionsSimulateRequestDto req) {
         log.debug("Simulate permission '{}' for user: {} in org: {}",
@@ -301,9 +305,14 @@ public class PermissionsService {
         return new ImportValidateResult(saved, issues);
     }
 
+    /**
+     * Commits a previously validated CSV import session.
+     * The handler extracts the import ID from the request DTO before calling here.
+     *
+     * @param importId the import session identifier from the validate step
+     */
     @Transactional
-    public ImportCommitResult commitPermissionsImport(PermissionImportCommitRequestDto req) {
-        UUID importId = req.getImportId();
+    public ImportCommitResult commitPermissionsImport(UUID importId) {
         log.debug("CSV permission import commit — importId: {}", importId);
 
         PermissionImport importSession = permissionImportRepository.findById(importId)

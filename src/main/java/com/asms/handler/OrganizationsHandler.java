@@ -36,7 +36,10 @@ public class OrganizationsHandler implements OrganizationsApiDelegate {
     @Override
     public ResponseEntity<OrganizationDto> createOrganization(
             CreateOrganizationRequestDto createOrganizationRequestDto) {
-        Organization org = organizationsService.createOrganization(createOrganizationRequestDto);
+        String slug = generateSlug(createOrganizationRequestDto.getName());
+        Organization entity = organizationMapper.toOrganizationEntity(
+                createOrganizationRequestDto, slug);
+        Organization org = organizationsService.createOrganization(entity);
         return ResponseEntity.status(201).body(organizationMapper.toDto(org));
     }
 
@@ -61,9 +64,18 @@ public class OrganizationsHandler implements OrganizationsApiDelegate {
     @Override
     public ResponseEntity<OrganizationDto> updateOrganization(
             UUID organizationId, UpdateOrganizationRequestDto updateOrganizationRequestDto) {
-        Organization org = organizationsService.updateOrganization(
-                organizationId, updateOrganizationRequestDto);
+        Organization patch = organizationMapper.toOrganizationPatch(updateOrganizationRequestDto);
+        Organization org = organizationsService.updateOrganization(organizationId, patch);
         return ResponseEntity.ok(organizationMapper.toDto(org));
+    }
+
+    /** Mirrors the slug generation logic from OrganizationsService (now moved here). */
+    private String generateSlug(String name) {
+        return name.toLowerCase()
+                .replaceAll("[^a-z0-9\\s-]", "")
+                .replaceAll("\\s+", "-")
+                .replaceAll("-+", "-")
+                .replaceAll("^-|-$", "");
     }
 
 }
