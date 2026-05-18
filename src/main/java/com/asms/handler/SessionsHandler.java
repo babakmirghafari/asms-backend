@@ -5,6 +5,7 @@ import com.asms.domain.Session;
 import com.asms.mapper.SessionMapper;
 import com.asms.model.PagedResponseDto;
 import com.asms.model.RevokeAllSessionsRequestDto;
+import com.asms.util.PageResponseBuilder;
 import com.asms.model.RevokeAllSessionsResponseDto;
 import com.asms.model.RevokeSessionRequestDto;
 import com.asms.model.SessionDto;
@@ -42,8 +43,7 @@ public class SessionsHandler implements SessionsApiDelegate {
             Integer page, Integer size, UUID userId, UUID organizationId, String status) {
         Page<Session> sessions = sessionsService.listSessions(page, size, userId, organizationId, status);
         List<SessionDto> dtos = sessions.getContent().stream().map(sessionMapper::toDto).toList();
-        return ResponseEntity.ok(buildPage(dtos, sessions.getTotalElements(),
-                sessions.getNumber(), sessions.getSize()));
+        return ResponseEntity.ok(PageResponseBuilder.build(dtos, sessions));
     }
 
     @Override
@@ -62,15 +62,4 @@ public class SessionsHandler implements SessionsApiDelegate {
         return ResponseEntity.ok(sessionMapper.toDto(session));
     }
 
-    // ─── private helpers ────────────────────────────────────────────────────
-
-    private PagedResponseDto buildPage(List<?> items, long total, int page, int size) {
-        PagedResponseDto dto = new PagedResponseDto();
-        dto.setContent(items.stream().map(i -> (Object) i).toList());
-        dto.setTotalElements(total);
-        dto.setNumber(page);
-        dto.setSize(size);
-        dto.setTotalPages(size > 0 ? (int) Math.ceil((double) total / size) : 0);
-        return dto;
-    }
 }

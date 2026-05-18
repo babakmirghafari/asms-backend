@@ -8,6 +8,7 @@ import com.asms.model.AuditExportResponseDto;
 import com.asms.model.AuditLogEntryDto;
 import com.asms.model.PagedResponseDto;
 import com.asms.service.AuditLogsService;
+import com.asms.util.PageResponseBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -55,8 +56,7 @@ public class AuditLogsHandler implements AuditLogsApiDelegate {
                 page, size, organizationId, actorId, action, from, to);
         List<AuditLogEntryDto> dtos = entries.getContent().stream()
                 .map(auditLogMapper::toAuditLogEntryDto).toList();
-        return ResponseEntity.ok(buildPage(dtos, entries.getTotalElements(),
-                entries.getNumber(), entries.getSize()));
+        return ResponseEntity.ok(PageResponseBuilder.build(dtos, entries));
     }
 
     @Override
@@ -70,15 +70,4 @@ public class AuditLogsHandler implements AuditLogsApiDelegate {
         return ResponseEntity.status(202).body(dto);
     }
 
-    // ─── private helpers ────────────────────────────────────────────────────
-
-    private PagedResponseDto buildPage(List<?> items, long total, int page, int size) {
-        PagedResponseDto dto = new PagedResponseDto();
-        dto.setContent(items.stream().map(i -> (Object) i).toList());
-        dto.setTotalElements(total);
-        dto.setNumber(page);
-        dto.setSize(size);
-        dto.setTotalPages(size > 0 ? (int) Math.ceil((double) total / size) : 0);
-        return dto;
-    }
 }

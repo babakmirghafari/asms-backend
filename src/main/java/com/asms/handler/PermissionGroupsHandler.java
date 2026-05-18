@@ -9,6 +9,7 @@ import com.asms.model.PagedResponseDto;
 import com.asms.model.PermissionGroupDto;
 import com.asms.model.UpdatePermissionGroupRequestDto;
 import com.asms.service.PermissionGroupsService;
+import com.asms.util.PageResponseBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -88,8 +89,7 @@ public class PermissionGroupsHandler implements PermissionGroupsApiDelegate {
         Page<PermissionGroup> groups =
                 permissionGroupsService.listPermissionGroups(page, size, organizationId);
         List<PermissionGroupDto> dtos = groups.getContent().stream().map(permissionGroupMapper::toDto).toList();
-        return ResponseEntity.ok(buildPage(dtos, groups.getTotalElements(),
-                groups.getNumber(), groups.getSize()));
+        return ResponseEntity.ok(PageResponseBuilder.build(dtos, groups));
     }
 
     @Override
@@ -106,15 +106,4 @@ public class PermissionGroupsHandler implements PermissionGroupsApiDelegate {
         return ResponseEntity.ok(permissionGroupMapper.toDto(updated));
     }
 
-    // ─── private helpers ────────────────────────────────────────────────────
-
-    private PagedResponseDto buildPage(List<?> items, long total, int page, int size) {
-        PagedResponseDto dto = new PagedResponseDto();
-        dto.setContent(items.stream().map(i -> (Object) i).toList());
-        dto.setTotalElements(total);
-        dto.setNumber(page);
-        dto.setSize(size);
-        dto.setTotalPages(size > 0 ? (int) Math.ceil((double) total / size) : 0);
-        return dto;
-    }
 }

@@ -6,6 +6,7 @@ import com.asms.mapper.AuditLogMapper;
 import com.asms.model.ActivityLogDto;
 import com.asms.model.PagedResponseDto;
 import com.asms.service.ActivityLogsService;
+import com.asms.util.PageResponseBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -43,19 +44,7 @@ public class ActivityLogsHandler implements ActivityLogsApiDelegate {
                 organizationId, page, size, actorId, category, fromDate, toDate);
         List<ActivityLogDto> dtos = logs.getContent().stream()
                 .map(auditLogMapper::toActivityLogDto).toList();
-        return ResponseEntity.ok(buildPage(dtos, logs.getTotalElements(),
-                logs.getNumber(), logs.getSize()));
+        return ResponseEntity.ok(PageResponseBuilder.build(dtos, logs));
     }
 
-    // ─── private helpers ────────────────────────────────────────────────────
-
-    private PagedResponseDto buildPage(List<?> items, long total, int page, int size) {
-        PagedResponseDto dto = new PagedResponseDto();
-        dto.setContent(items.stream().map(i -> (Object) i).toList());
-        dto.setTotalElements(total);
-        dto.setNumber(page);
-        dto.setSize(size);
-        dto.setTotalPages(size > 0 ? (int) Math.ceil((double) total / size) : 0);
-        return dto;
-    }
 }

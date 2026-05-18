@@ -7,6 +7,7 @@ import com.asms.model.AuthPolicyDto;
 import com.asms.model.PagedResponseDto;
 import com.asms.model.UpdateAuthPolicyRequestDto;
 import com.asms.service.AuthPoliciesService;
+import com.asms.util.PageResponseBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -40,8 +41,7 @@ public class AuthPoliciesHandler implements AuthPoliciesApiDelegate {
     public ResponseEntity<PagedResponseDto> listAuthPolicies(Integer page, Integer size) {
         Page<AuthPolicy> policies = authPoliciesService.listAuthPolicies(page, size);
         List<AuthPolicyDto> dtos = policies.getContent().stream().map(authPolicyMapper::toDto).toList();
-        return ResponseEntity.ok(buildPage(dtos, policies.getTotalElements(),
-                policies.getNumber(), policies.getSize()));
+        return ResponseEntity.ok(PageResponseBuilder.build(dtos, policies));
     }
 
     @Override
@@ -51,15 +51,4 @@ public class AuthPoliciesHandler implements AuthPoliciesApiDelegate {
         return ResponseEntity.ok(authPolicyMapper.toDto(policy));
     }
 
-    // ─── private helpers ────────────────────────────────────────────────────
-
-    private PagedResponseDto buildPage(List<?> items, long total, int page, int size) {
-        PagedResponseDto dto = new PagedResponseDto();
-        dto.setContent(items.stream().map(i -> (Object) i).toList());
-        dto.setTotalElements(total);
-        dto.setNumber(page);
-        dto.setSize(size);
-        dto.setTotalPages(size > 0 ? (int) Math.ceil((double) total / size) : 0);
-        return dto;
-    }
 }

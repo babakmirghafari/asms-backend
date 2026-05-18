@@ -7,6 +7,7 @@ import com.asms.model.CreateMembershipRequestDto;
 import com.asms.model.MembershipDto;
 import com.asms.model.PagedResponseDto;
 import com.asms.service.MembershipsService;
+import com.asms.util.PageResponseBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -55,19 +56,7 @@ public class MembershipsHandler implements MembershipsApiDelegate {
         Page<Membership> memberships =
                 membershipsService.listMemberships(page, size, organizationId, userId);
         List<MembershipDto> dtos = memberships.getContent().stream().map(membershipMapper::toDto).toList();
-        return ResponseEntity.ok(buildPage(dtos, memberships.getTotalElements(),
-                memberships.getNumber(), memberships.getSize()));
+        return ResponseEntity.ok(PageResponseBuilder.build(dtos, memberships));
     }
 
-    // ─── private helpers ────────────────────────────────────────────────────
-
-    private PagedResponseDto buildPage(List<?> items, long total, int page, int size) {
-        PagedResponseDto dto = new PagedResponseDto();
-        dto.setContent(items.stream().map(i -> (Object) i).toList());
-        dto.setTotalElements(total);
-        dto.setNumber(page);
-        dto.setSize(size);
-        dto.setTotalPages(size > 0 ? (int) Math.ceil((double) total / size) : 0);
-        return dto;
-    }
 }

@@ -9,6 +9,7 @@ import com.asms.model.CreatePermissionRequestDto;
 import com.asms.model.PagedResponseDto;
 import com.asms.model.PermissionDto;
 import com.asms.model.PermissionImportCommitRequestDto;
+import com.asms.util.PageResponseBuilder;
 import com.asms.model.PermissionImportCommitResponseDto;
 import com.asms.model.PermissionImportReportDto;
 import com.asms.model.PermissionImportValidateResponseDto;
@@ -78,8 +79,7 @@ public class PermissionsHandler implements PermissionsApiDelegate {
                 permissionsService.listPermissions(page, size, organizationId, status);
         List<PermissionDto> dtos = permissions.getContent().stream()
                 .map(permissionMapper::toDto).toList();
-        return ResponseEntity.ok(buildPage(dtos, permissions.getTotalElements(),
-                permissions.getNumber(), permissions.getSize()));
+        return ResponseEntity.ok(PageResponseBuilder.build(dtos, permissions));
     }
 
     @Override
@@ -170,15 +170,4 @@ public class PermissionsHandler implements PermissionsApiDelegate {
         return ResponseEntity.ok(report);
     }
 
-    // ─── private helpers ────────────────────────────────────────────────────
-
-    private PagedResponseDto buildPage(List<?> items, long total, int page, int size) {
-        PagedResponseDto dto = new PagedResponseDto();
-        dto.setContent(items.stream().map(i -> (Object) i).toList());
-        dto.setTotalElements(total);
-        dto.setNumber(page);
-        dto.setSize(size);
-        dto.setTotalPages(size > 0 ? (int) Math.ceil((double) total / size) : 0);
-        return dto;
-    }
 }

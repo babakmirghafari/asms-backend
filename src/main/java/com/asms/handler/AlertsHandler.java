@@ -9,6 +9,7 @@ import com.asms.model.EscalateAlertRequestDto;
 import com.asms.model.PagedResponseDto;
 import com.asms.model.ResolveAlertRequestDto;
 import com.asms.service.AlertsService;
+import com.asms.util.PageResponseBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -65,19 +66,7 @@ public class AlertsHandler implements AlertsApiDelegate {
             Integer page, Integer size, UUID organizationId, String type, String status) {
         Page<Alert> alerts = alertsService.listAlerts(page, size, organizationId, type, status);
         List<AlertDto> dtos = alerts.getContent().stream().map(alertMapper::toDto).toList();
-        return ResponseEntity.ok(buildPage(dtos, alerts.getTotalElements(),
-                alerts.getNumber(), alerts.getSize()));
+        return ResponseEntity.ok(PageResponseBuilder.build(dtos, alerts));
     }
 
-    // ─── private helpers ────────────────────────────────────────────────────
-
-    private PagedResponseDto buildPage(List<?> items, long total, int page, int size) {
-        PagedResponseDto dto = new PagedResponseDto();
-        dto.setContent(items.stream().map(i -> (Object) i).toList());
-        dto.setTotalElements(total);
-        dto.setNumber(page);
-        dto.setSize(size);
-        dto.setTotalPages(size > 0 ? (int) Math.ceil((double) total / size) : 0);
-        return dto;
-    }
 }

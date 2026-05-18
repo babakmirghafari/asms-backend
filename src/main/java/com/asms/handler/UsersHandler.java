@@ -6,6 +6,7 @@ import com.asms.mapper.UserMapper;
 import com.asms.model.CreateUserRequestDto;
 import com.asms.model.PagedResponseDto;
 import com.asms.model.UpdateUserRequestDto;
+import com.asms.util.PageResponseBuilder;
 import com.asms.model.UserDto;
 import com.asms.model.UserStatusUpdateRequestDto;
 import com.asms.service.UsersService;
@@ -38,7 +39,8 @@ public class UsersHandler implements UsersApiDelegate {
 
     @Override
     public ResponseEntity<UserDto> createUser(CreateUserRequestDto createUserRequestDto) {
-        User user = usersService.createUser(createUserRequestDto);
+        User user = userMapper.toUserEntityFromCreateUserRequestDto(createUserRequestDto);
+        usersService.createUser(user);
         return ResponseEntity.status(201).body(userMapper.toDto(user));
     }
 
@@ -58,8 +60,7 @@ public class UsersHandler implements UsersApiDelegate {
             Integer page, Integer size, String sort, String search, UUID organizationId) {
         Page<User> users = usersService.listUsers(page, size, sort, search, organizationId);
         List<UserDto> dtos = users.getContent().stream().map(userMapper::toDto).toList();
-        return ResponseEntity.ok(buildPage(dtos, users.getTotalElements(),
-                users.getNumber(), users.getSize()));
+        return ResponseEntity.ok(PageResponseBuilder.build(dtos, users));
     }
 
     @Override
@@ -75,15 +76,4 @@ public class UsersHandler implements UsersApiDelegate {
         return ResponseEntity.ok(userMapper.toDto(updated));
     }
 
-    // ─── private helpers ────────────────────────────────────────────────────
-
-    private PagedResponseDto buildPage(List<?> items, long total, int page, int size) {
-        PagedResponseDto dto = new PagedResponseDto();
-        dto.setContent(items.stream().map(i -> (Object) i).toList());
-        dto.setTotalElements(total);
-        dto.setNumber(page);
-        dto.setSize(size);
-        dto.setTotalPages(size > 0 ? (int) Math.ceil((double) total / size) : 0);
-        return dto;
-    }
 }

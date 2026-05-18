@@ -8,6 +8,7 @@ import com.asms.model.PagedResponseDto;
 import com.asms.model.StationPolicyDto;
 import com.asms.model.UpdateStationPolicyRequestDto;
 import com.asms.service.StationPoliciesService;
+import com.asms.util.PageResponseBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -55,8 +56,7 @@ public class StationPoliciesHandler implements StationPoliciesApiDelegate {
             Integer page, Integer size, UUID userId) {
         Page<StationPolicy> policies = stationPoliciesService.listStationPolicies(page, size, userId);
         List<StationPolicyDto> dtos = policies.getContent().stream().map(stationPolicyMapper::toDto).toList();
-        return ResponseEntity.ok(buildPage(dtos, policies.getTotalElements(),
-                policies.getNumber(), policies.getSize()));
+        return ResponseEntity.ok(PageResponseBuilder.build(dtos, policies));
     }
 
     @Override
@@ -66,15 +66,4 @@ public class StationPoliciesHandler implements StationPoliciesApiDelegate {
         return ResponseEntity.ok(stationPolicyMapper.toDto(policy));
     }
 
-    // ─── private helpers ────────────────────────────────────────────────────
-
-    private PagedResponseDto buildPage(List<?> items, long total, int page, int size) {
-        PagedResponseDto dto = new PagedResponseDto();
-        dto.setContent(items.stream().map(i -> (Object) i).toList());
-        dto.setTotalElements(total);
-        dto.setNumber(page);
-        dto.setSize(size);
-        dto.setTotalPages(size > 0 ? (int) Math.ceil((double) total / size) : 0);
-        return dto;
-    }
 }

@@ -8,6 +8,7 @@ import com.asms.model.OrganizationDto;
 import com.asms.model.PagedResponseDto;
 import com.asms.model.UpdateOrganizationRequestDto;
 import com.asms.service.OrganizationsService;
+import com.asms.util.PageResponseBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -54,8 +55,7 @@ public class OrganizationsHandler implements OrganizationsApiDelegate {
     public ResponseEntity<PagedResponseDto> listOrganizations(Integer page, Integer size, String search) {
         Page<Organization> orgs = organizationsService.listOrganizations(page, size, search);
         List<OrganizationDto> dtos = orgs.getContent().stream().map(organizationMapper::toDto).toList();
-        return ResponseEntity.ok(buildPage(dtos, orgs.getTotalElements(),
-                orgs.getNumber(), orgs.getSize()));
+        return ResponseEntity.ok(PageResponseBuilder.build(dtos, orgs));
     }
 
     @Override
@@ -66,15 +66,4 @@ public class OrganizationsHandler implements OrganizationsApiDelegate {
         return ResponseEntity.ok(organizationMapper.toDto(org));
     }
 
-    // ─── private helpers ────────────────────────────────────────────────────
-
-    private PagedResponseDto buildPage(List<?> items, long total, int page, int size) {
-        PagedResponseDto dto = new PagedResponseDto();
-        dto.setContent(items.stream().map(i -> (Object) i).toList());
-        dto.setTotalElements(total);
-        dto.setNumber(page);
-        dto.setSize(size);
-        dto.setTotalPages(size > 0 ? (int) Math.ceil((double) total / size) : 0);
-        return dto;
-    }
 }
