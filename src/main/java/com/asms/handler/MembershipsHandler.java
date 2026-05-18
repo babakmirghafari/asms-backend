@@ -2,6 +2,7 @@ package com.asms.handler;
 
 import com.asms.api.MembershipsApiDelegate;
 import com.asms.domain.Membership;
+import com.asms.mapper.MembershipMapper;
 import com.asms.model.CreateMembershipRequestDto;
 import com.asms.model.MembershipDto;
 import com.asms.model.PagedResponseDto;
@@ -19,7 +20,8 @@ import java.util.UUID;
  * REST adapter for the Memberships API.
  *
  * <p>Implements {@link MembershipsApiDelegate}. Delegates all business logic to
- * {@link MembershipsService}. Maps domain {@link Membership} to {@link MembershipDto}.
+ * {@link MembershipsService}. Maps domain {@link Membership} ↔ {@link MembershipDto}
+ * via {@link MembershipMapper}.
  */
 @Slf4j
 @Component
@@ -27,12 +29,13 @@ import java.util.UUID;
 public class MembershipsHandler implements MembershipsApiDelegate {
 
     private final MembershipsService membershipsService;
+    private final MembershipMapper membershipMapper;
 
     @Override
     public ResponseEntity<MembershipDto> createMembership(
             CreateMembershipRequestDto createMembershipRequestDto) {
         Membership membership = membershipsService.createMembership(createMembershipRequestDto);
-        return ResponseEntity.status(201).body(toDto(membership));
+        return ResponseEntity.status(201).body(membershipMapper.toDto(membership));
     }
 
     @Override
@@ -43,7 +46,7 @@ public class MembershipsHandler implements MembershipsApiDelegate {
 
     @Override
     public ResponseEntity<MembershipDto> getMembershipById(UUID membershipId) {
-        return ResponseEntity.ok(toDto(membershipsService.getMembershipById(membershipId)));
+        return ResponseEntity.ok(membershipMapper.toDto(membershipsService.getMembershipById(membershipId)));
     }
 
     @Override
@@ -51,23 +54,12 @@ public class MembershipsHandler implements MembershipsApiDelegate {
             Integer page, Integer size, UUID organizationId, UUID userId) {
         Page<Membership> memberships =
                 membershipsService.listMemberships(page, size, organizationId, userId);
-        List<MembershipDto> dtos = memberships.getContent().stream().map(this::toDto).toList();
+        List<MembershipDto> dtos = memberships.getContent().stream().map(membershipMapper::toDto).toList();
         return ResponseEntity.ok(buildPage(dtos, memberships.getTotalElements(),
                 memberships.getNumber(), memberships.getSize()));
     }
 
     // ─── private helpers ────────────────────────────────────────────────────
-
-    private MembershipDto toDto(Membership m) {
-        MembershipDto dto = new MembershipDto();
-        dto.setId(m.getId());
-        dto.setUserId(m.getUserId());
-        dto.setOrganizationId(m.getOrgId());
-        dto.setStatus(MembershipDto.StatusEnum.fromValue(m.getStatus()));
-        dto.setCreatedAt(m.getCreatedAt());
-        dto.setUpdatedAt(m.getUpdatedAt());
-        return dto;
-    }
 
     private PagedResponseDto buildPage(List<?> items, long total, int page, int size) {
         PagedResponseDto dto = new PagedResponseDto();

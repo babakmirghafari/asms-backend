@@ -5,6 +5,7 @@ import com.asms.model.ActivityLogDto;
 import com.asms.model.AuditLogEntryDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.MappingConstants;
 import org.mapstruct.Named;
 
 /**
@@ -17,7 +18,7 @@ import org.mapstruct.Named;
  * targetType, targetId, targetDisplayName, organizationId, ipAddress,
  * outcome, summary, timestamp.
  */
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 public interface AuditLogMapper {
 
     @Mapping(target = "organizationId", source = "orgId")

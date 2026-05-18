@@ -2,6 +2,7 @@ package com.asms.handler;
 
 import com.asms.api.ApplicationsApiDelegate;
 import com.asms.domain.Application;
+import com.asms.mapper.ApplicationMapper;
 import com.asms.model.ApplicationCredentialDto;
 import com.asms.model.ApplicationDto;
 import com.asms.model.CreateApplicationRequestDto;
@@ -22,7 +23,8 @@ import java.util.UUID;
  * REST adapter for the Applications API.
  *
  * <p>Implements {@link ApplicationsApiDelegate}. Delegates all business logic to
- * {@link ApplicationsService}. Maps domain {@link Application} to {@link ApplicationDto}.
+ * {@link ApplicationsService}. Maps domain {@link Application} ↔ {@link ApplicationDto}
+ * via {@link ApplicationMapper}.
  */
 @Slf4j
 @Component
@@ -30,12 +32,13 @@ import java.util.UUID;
 public class ApplicationsHandler implements ApplicationsApiDelegate {
 
     private final ApplicationsService applicationsService;
+    private final ApplicationMapper applicationMapper;
 
     @Override
     public ResponseEntity<ApplicationDto> createApplication(
             CreateApplicationRequestDto createApplicationRequestDto) {
         Application app = applicationsService.createApplication(createApplicationRequestDto);
-        return ResponseEntity.status(201).body(toDto(app));
+        return ResponseEntity.status(201).body(applicationMapper.toDto(app));
     }
 
     @Override
@@ -46,14 +49,14 @@ public class ApplicationsHandler implements ApplicationsApiDelegate {
 
     @Override
     public ResponseEntity<ApplicationDto> getApplicationById(UUID applicationId) {
-        return ResponseEntity.ok(toDto(applicationsService.getApplicationById(applicationId)));
+        return ResponseEntity.ok(applicationMapper.toDto(applicationsService.getApplicationById(applicationId)));
     }
 
     @Override
     public ResponseEntity<PagedResponseDto> listApplications(
             Integer page, Integer size, UUID organizationId, String type) {
         Page<Application> apps = applicationsService.listApplications(page, size, organizationId, type);
-        List<ApplicationDto> dtos = apps.getContent().stream().map(this::toDto).toList();
+        List<ApplicationDto> dtos = apps.getContent().stream().map(applicationMapper::toDto).toList();
         return ResponseEntity.ok(buildPage(dtos, apps.getTotalElements(),
                 apps.getNumber(), apps.getSize()));
     }
@@ -73,29 +76,10 @@ public class ApplicationsHandler implements ApplicationsApiDelegate {
     public ResponseEntity<ApplicationDto> updateApplication(
             UUID applicationId, UpdateApplicationRequestDto updateApplicationRequestDto) {
         Application app = applicationsService.updateApplication(applicationId, updateApplicationRequestDto);
-        return ResponseEntity.ok(toDto(app));
+        return ResponseEntity.ok(applicationMapper.toDto(app));
     }
 
     // ─── private helpers ────────────────────────────────────────────────────
-
-    private ApplicationDto toDto(Application a) {
-        ApplicationDto dto = new ApplicationDto();
-        dto.setId(a.getId());
-        dto.setOrganizationId(a.getOrgId());
-        dto.setName(a.getName());
-        dto.setConnectorType(ApplicationDto.ConnectorTypeEnum.fromValue(a.getType()));
-        dto.setClientId(a.getClientId());
-        dto.setRedirectUris(a.getRedirectUris());
-        dto.setSamlEntityId(a.getSamlEntityId());
-        dto.setStatus(ApplicationDto.StatusEnum.fromValue(a.getStatus()));
-        if (a.getIntegrationHealthStatus() != null) {
-            dto.setIntegrationHealthStatus(
-                    ApplicationDto.IntegrationHealthStatusEnum.fromValue(a.getIntegrationHealthStatus()));
-        }
-        dto.setCreatedAt(a.getCreatedAt());
-        dto.setUpdatedAt(a.getUpdatedAt());
-        return dto;
-    }
 
     private PagedResponseDto buildPage(List<?> items, long total, int page, int size) {
         PagedResponseDto dto = new PagedResponseDto();

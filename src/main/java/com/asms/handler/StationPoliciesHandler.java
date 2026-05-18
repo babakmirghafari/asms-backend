@@ -2,6 +2,7 @@ package com.asms.handler;
 
 import com.asms.api.StationPoliciesApiDelegate;
 import com.asms.domain.StationPolicy;
+import com.asms.mapper.StationPolicyMapper;
 import com.asms.model.CreateStationPolicyRequestDto;
 import com.asms.model.PagedResponseDto;
 import com.asms.model.StationPolicyDto;
@@ -20,7 +21,8 @@ import java.util.UUID;
  * REST adapter for the StationPolicies API.
  *
  * <p>Implements {@link StationPoliciesApiDelegate}. Delegates all business logic to
- * {@link StationPoliciesService}. Maps domain {@link StationPolicy} to {@link StationPolicyDto}.
+ * {@link StationPoliciesService}. Maps domain {@link StationPolicy} ↔ {@link StationPolicyDto}
+ * via {@link StationPolicyMapper}.
  */
 @Slf4j
 @Component
@@ -28,12 +30,13 @@ import java.util.UUID;
 public class StationPoliciesHandler implements StationPoliciesApiDelegate {
 
     private final StationPoliciesService stationPoliciesService;
+    private final StationPolicyMapper stationPolicyMapper;
 
     @Override
     public ResponseEntity<StationPolicyDto> createStationPolicy(
             CreateStationPolicyRequestDto createStationPolicyRequestDto) {
         StationPolicy policy = stationPoliciesService.createStationPolicy(createStationPolicyRequestDto);
-        return ResponseEntity.status(201).body(toDto(policy));
+        return ResponseEntity.status(201).body(stationPolicyMapper.toDto(policy));
     }
 
     @Override
@@ -44,14 +47,14 @@ public class StationPoliciesHandler implements StationPoliciesApiDelegate {
 
     @Override
     public ResponseEntity<StationPolicyDto> getStationPolicyById(UUID policyId) {
-        return ResponseEntity.ok(toDto(stationPoliciesService.getStationPolicyById(policyId)));
+        return ResponseEntity.ok(stationPolicyMapper.toDto(stationPoliciesService.getStationPolicyById(policyId)));
     }
 
     @Override
     public ResponseEntity<PagedResponseDto> listStationPolicies(
             Integer page, Integer size, UUID userId) {
         Page<StationPolicy> policies = stationPoliciesService.listStationPolicies(page, size, userId);
-        List<StationPolicyDto> dtos = policies.getContent().stream().map(this::toDto).toList();
+        List<StationPolicyDto> dtos = policies.getContent().stream().map(stationPolicyMapper::toDto).toList();
         return ResponseEntity.ok(buildPage(dtos, policies.getTotalElements(),
                 policies.getNumber(), policies.getSize()));
     }
@@ -60,29 +63,10 @@ public class StationPoliciesHandler implements StationPoliciesApiDelegate {
     public ResponseEntity<StationPolicyDto> updateStationPolicy(
             UUID policyId, UpdateStationPolicyRequestDto updateStationPolicyRequestDto) {
         StationPolicy policy = stationPoliciesService.updateStationPolicy(policyId, updateStationPolicyRequestDto);
-        return ResponseEntity.ok(toDto(policy));
+        return ResponseEntity.ok(stationPolicyMapper.toDto(policy));
     }
 
     // ─── private helpers ────────────────────────────────────────────────────
-
-    private StationPolicyDto toDto(StationPolicy p) {
-        StationPolicyDto dto = new StationPolicyDto();
-        dto.setId(p.getId());
-        dto.setName(p.getName());
-        dto.setDescription(p.getDescription());
-        dto.setOrganizationId(p.getOrgId());
-        if (p.getStatus() != null) {
-            dto.setStatus(StationPolicyDto.StatusEnum.fromValue(p.getStatus()));
-        }
-        dto.setAllowedIpRanges(p.getAllowedIps());
-        dto.setAllowedDays(p.getAllowedDays() != null
-                ? p.getAllowedDays().stream().map(Short::intValue).toList() : null);
-        dto.setWorkStartTime(p.getWorkHourStart() != null ? p.getWorkHourStart() + ":00" : null);
-        dto.setWorkEndTime(p.getWorkHourEnd() != null ? p.getWorkHourEnd() + ":00" : null);
-        dto.setCreatedAt(p.getCreatedAt());
-        dto.setUpdatedAt(p.getUpdatedAt());
-        return dto;
-    }
 
     private PagedResponseDto buildPage(List<?> items, long total, int page, int size) {
         PagedResponseDto dto = new PagedResponseDto();
