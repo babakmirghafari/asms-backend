@@ -1,12 +1,16 @@
 package com.asms.handler;
 
 import com.asms.api.StationPoliciesApiDelegate;
+import com.asms.domain.Organization;
 import com.asms.domain.StationPolicy;
+import com.asms.exception.ResourceNotFoundException;
 import com.asms.mapper.StationPolicyMapper;
 import com.asms.model.CreateStationPolicyRequestDto;
 import com.asms.model.PagedResponseDto;
 import com.asms.model.StationPolicyDto;
 import com.asms.model.UpdateStationPolicyRequestDto;
+import com.asms.repository.OrganizationRepository;
+import com.asms.security.TenantContext;
 import com.asms.service.StationPoliciesService;
 import com.asms.util.PageResponseBuilder;
 import lombok.RequiredArgsConstructor;
@@ -32,11 +36,18 @@ public class StationPoliciesHandler implements StationPoliciesApiDelegate {
 
     private final StationPoliciesService stationPoliciesService;
     private final StationPolicyMapper stationPolicyMapper;
+    private final OrganizationRepository organizationRepository;
 
     @Override
     public ResponseEntity<StationPolicyDto> createStationPolicy(
             CreateStationPolicyRequestDto createStationPolicyRequestDto) {
         StationPolicy entity = stationPolicyMapper.toStationPolicyEntity(createStationPolicyRequestDto);
+        UUID orgId = createStationPolicyRequestDto.getOrganizationId() != null
+                ? createStationPolicyRequestDto.getOrganizationId()
+                : TenantContext.getRequiredOrgId();
+        Organization org = organizationRepository.findById(orgId)
+                .orElseThrow(() -> new ResourceNotFoundException("Organization not found: " + orgId));
+        entity.setOrganization(org);
         StationPolicy policy = stationPoliciesService.createStationPolicy(entity);
         return ResponseEntity.status(201).body(stationPolicyMapper.toDto(policy));
     }

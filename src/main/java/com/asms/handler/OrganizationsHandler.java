@@ -2,11 +2,13 @@ package com.asms.handler;
 
 import com.asms.api.OrganizationsApiDelegate;
 import com.asms.domain.Organization;
+import com.asms.exception.ResourceNotFoundException;
 import com.asms.mapper.OrganizationMapper;
 import com.asms.model.CreateOrganizationRequestDto;
 import com.asms.model.OrganizationDto;
 import com.asms.model.PagedResponseDto;
 import com.asms.model.UpdateOrganizationRequestDto;
+import com.asms.repository.OrganizationRepository;
 import com.asms.service.OrganizationsService;
 import com.asms.util.PageResponseBuilder;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +34,7 @@ public class OrganizationsHandler implements OrganizationsApiDelegate {
 
     private final OrganizationsService organizationsService;
     private final OrganizationMapper organizationMapper;
+    private final OrganizationRepository organizationRepository;
 
     @Override
     public ResponseEntity<OrganizationDto> createOrganization(
@@ -39,6 +42,13 @@ public class OrganizationsHandler implements OrganizationsApiDelegate {
         String slug = generateSlug(createOrganizationRequestDto.getName());
         Organization entity = organizationMapper.toOrganizationEntity(
                 createOrganizationRequestDto, slug);
+        UUID parentId = createOrganizationRequestDto.getParentOrganizationId();
+        if (parentId != null) {
+            Organization parent = organizationRepository.findById(parentId)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Parent organization not found: " + parentId));
+            entity.setParentOrganization(parent);
+        }
         Organization org = organizationsService.createOrganization(entity);
         return ResponseEntity.status(201).body(organizationMapper.toDto(org));
     }

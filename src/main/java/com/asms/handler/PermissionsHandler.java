@@ -1,15 +1,19 @@
 package com.asms.handler;
 
 import com.asms.api.PermissionsApiDelegate;
+import com.asms.domain.Organization;
 import com.asms.domain.Permission;
 import com.asms.domain.PermissionImport;
 import com.asms.domain.enums.PermissionImportStatus;
 import com.asms.domain.enums.PermissionStatus;
+import com.asms.exception.ResourceNotFoundException;
 import com.asms.mapper.PermissionMapper;
 import com.asms.model.CreatePermissionRequestDto;
 import com.asms.model.PagedResponseDto;
 import com.asms.model.PermissionDto;
 import com.asms.model.PermissionImportCommitRequestDto;
+import com.asms.repository.OrganizationRepository;
+import com.asms.security.TenantContext;
 import com.asms.util.PageResponseBuilder;
 import com.asms.model.PermissionImportCommitResponseDto;
 import com.asms.model.PermissionImportReportDto;
@@ -53,11 +57,18 @@ public class PermissionsHandler implements PermissionsApiDelegate {
     private final PermissionsService permissionsService;
     private final PermissionMapper permissionMapper;
     private final ObjectMapper objectMapper;
+    private final OrganizationRepository organizationRepository;
 
     @Override
     public ResponseEntity<PermissionDto> createPermission(
             CreatePermissionRequestDto createPermissionRequestDto) {
         Permission entity = permissionMapper.toPermissionEntity(createPermissionRequestDto);
+        UUID orgId = createPermissionRequestDto.getOrganizationId() != null
+                ? createPermissionRequestDto.getOrganizationId()
+                : TenantContext.getRequiredOrgId();
+        Organization org = organizationRepository.findById(orgId)
+                .orElseThrow(() -> new ResourceNotFoundException("Organization not found: " + orgId));
+        entity.setOrganization(org);
         Permission permission = permissionsService.createPermission(entity);
         return ResponseEntity.status(201).body(permissionMapper.toDto(permission));
     }
