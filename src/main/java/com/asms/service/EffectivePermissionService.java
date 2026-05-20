@@ -2,9 +2,11 @@ package com.asms.service;
 
 import com.asms.domain.Permission;
 import com.asms.domain.PermissionGroup;
+import com.asms.domain.User;
 import com.asms.domain.enums.PermissionStatus;
+import com.asms.exception.ResourceNotFoundException;
 import com.asms.repository.PermissionGroupRepository;
-import com.asms.repository.PermissionRepository;
+import com.asms.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -41,7 +43,7 @@ import java.util.UUID;
 public class EffectivePermissionService {
 
     private final PermissionGroupRepository permissionGroupRepository;
-    private final PermissionRepository permissionRepository;
+    private final UserRepository userRepository;
 
     /**
      * Computes the effective permission set for a user within an organisation.
@@ -72,11 +74,20 @@ public class EffectivePermissionService {
             }
         }
 
-        // 3. No separate "direct permissions" table exists in the current schema —
-        //    permissions are granted exclusively through group membership (ADR-001).
-        //    This is the correct model: ASMS has NO roles and NO direct permission assignments.
-        //    All permissions flow through PermissionGroups.
-        Set<Permission> allPermissions = groupPermissions;
+        // 3. Load direct permissions assigned to the user via the user_permissions join table.
+        //    These are unioned with group-sourced permissions (additive model — no explicit DENY).
+        User user = userRepository.findByIdWithGroupsAndPermissions(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
+
+        Set<Permission> allPermissions = new HashSet<>(groupPermissions);
+        for (Permission perm : user.getDirectPermissions()) {
+            if (PermissionStatus.ACTIVE == perm.getStatus()) {
+                allPermissions.add(perm);
+                permissionSources
+                        .computeIfAbsent(perm.getId(), k -> new HashSet<>())
+                        .add("direct");
+            }
+        }
 
         // 4. Conflict detection: flag any permission that is sourced from more than one group
         List<PermissionConflict> conflicts = new ArrayList<>();

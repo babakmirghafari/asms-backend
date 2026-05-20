@@ -15,7 +15,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.OffsetDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -94,4 +96,25 @@ public class User {
 
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
     private List<Membership> memberships;
+
+    /**
+     * Inverse side of the {@code permission_group_members} join table.
+     * The owning side is {@link PermissionGroup#members} — no new table needed.
+     */
+    @ManyToMany(mappedBy = "members", fetch = FetchType.LAZY)
+    @Builder.Default
+    private Set<PermissionGroup> permissionGroups = new HashSet<>();
+
+    /**
+     * Direct permission assignments outside of groups, backed by the
+     * {@code user_permissions} join table (V3 migration).
+     */
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "user_permissions",
+        joinColumns = @JoinColumn(name = "user_id"),
+        inverseJoinColumns = @JoinColumn(name = "permission_id")
+    )
+    @Builder.Default
+    private Set<Permission> directPermissions = new HashSet<>();
 }

@@ -70,4 +70,21 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     @Query("SELECT COUNT(u) FROM User u WHERE u.status != :deleted")
     long countNonDeleted(@Param("deleted") UserStatus deleted);
+
+    /**
+     * Fetches a user together with their permission groups and direct permissions in a
+     * single query, avoiding N+1 issues when computing effective permissions.
+     *
+     * <p>Uses a named entity graph so the two join-fetch collections are loaded together.
+     * Callers should use this instead of {@link #findById} whenever the permission
+     * collections will be accessed.
+     */
+    @Query("""
+            SELECT u FROM User u
+            LEFT JOIN FETCH u.permissionGroups pg
+            LEFT JOIN FETCH pg.permissions
+            LEFT JOIN FETCH u.directPermissions
+            WHERE u.id = :id
+            """)
+    Optional<User> findByIdWithGroupsAndPermissions(@Param("id") UUID id);
 }

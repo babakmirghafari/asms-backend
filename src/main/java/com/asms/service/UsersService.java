@@ -1,11 +1,14 @@
 package com.asms.service;
 
 import com.asms.constant.AuditActions;
+import com.asms.domain.Permission;
+import com.asms.domain.PermissionGroup;
 import com.asms.domain.User;
 import com.asms.domain.enums.MembershipStatus;
 import com.asms.domain.enums.UserStatus;
 import com.asms.exception.ResourceNotFoundException;
-import com.asms.model.CreateUserRequestDto;
+import com.asms.repository.PermissionGroupRepository;
+import com.asms.repository.PermissionRepository;
 import com.asms.repository.UserRepository;
 import com.asms.security.TenantContext;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +19,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -33,6 +38,8 @@ import java.util.UUID;
 public class UsersService {
 
     private final UserRepository userRepository;
+    private final PermissionGroupRepository permissionGroupRepository;
+    private final PermissionRepository permissionRepository;
     private final AuditService auditService;
 
     @Transactional
@@ -116,10 +123,105 @@ public class UsersService {
         return saved;
     }
 
+    // ─── permission & group management ──────────────────────────────────────
+
+    /**
+     * Returns the effective permission set for a user — union of all group permissions
+     * and any direct permissions. Callers that need the full result (including source
+     * maps and conflict detection) should use {@link EffectivePermissionService} directly.
+     *
+     * @param userId target user identifier
+     * @return deduplicated set of effective {@link Permission} objects
+     */
+    @Transactional(readOnly = true)
+    public Set<Permission> getEffectivePermissions(UUID userId) {
+        User user = userRepository.findByIdWithGroupsAndPermissions(userId)
+                .filter(u -> UserStatus.DELETED != u.getStatus())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
+
+        Set<Permission> effective = new HashSet<>();
+        for (PermissionGroup group : user.getPermissionGroups()) {
+            effective.addAll(group.getPermissions());
+        }
+        effective.addAll(user.getDirectPermissions());
+        return effective;
+    }
+
+    /**
+     * Adds the user as a member of the specified permission group.
+     * The owning side ({@link PermissionGroup#members}) is updated and persisted.
+     *
+     * @param userId  target user identifier
+     * @param groupId permission group to join
+     */
+    @Transactional
+    public void assignGroupToUser(UUID userId, UUID groupId) {
+        User user = loadUser(userId);
+        PermissionGroup group = permissionGroupRepository.findById(groupId)
+                .orElseThrow(() -> new ResourceNotFoundException("Permission group not found: " + groupId));
+        group.getMembers().add(user);
+        group.setUpdatedAt(OffsetDateTime.now());
+        permissionGroupRepository.save(group);
+        log.info("User {} added to permission group {}", userId, groupId);
+    }
+
+    /**
+     * Removes the user from the specified permission group's member set.
+     *
+     * @param userId  target user identifier
+     * @param groupId permission group to leave
+     */
+    @Transactional
+    public void removeGroupFromUser(UUID userId, UUID groupId) {
+        PermissionGroup group = permissionGroupRepository.findById(groupId)
+                .orElseThrow(() -> new ResourceNotFoundException("Permission group not found: " + groupId));
+        group.getMembers().removeIf(u -> u.getId().equals(userId));
+        group.setUpdatedAt(OffsetDateTime.now());
+        permissionGroupRepository.save(group);
+        log.info("User {} removed from permission group {}", userId, groupId);
+    }
+
+    /**
+     * Grants a direct permission to a user via the {@code user_permissions} join table.
+     *
+     * @param userId       target user identifier
+     * @param permissionId permission to grant directly
+     */
+    @Transactional
+    public void grantDirectPermission(UUID userId, UUID permissionId) {
+        User user = loadUserWithPermissions(userId);
+        Permission permission = permissionRepository.findById(permissionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Permission not found: " + permissionId));
+        user.getDirectPermissions().add(permission);
+        userRepository.save(user);
+        log.info("Direct permission {} granted to user {}", permissionId, userId);
+    }
+
+    /**
+     * Revokes a direct permission from a user, removing the row from the
+     * {@code user_permissions} join table.
+     *
+     * @param userId       target user identifier
+     * @param permissionId permission to revoke
+     */
+    @Transactional
+    public void revokeDirectPermission(UUID userId, UUID permissionId) {
+        User user = loadUserWithPermissions(userId);
+        user.getDirectPermissions().removeIf(p -> p.getId().equals(permissionId));
+        userRepository.save(user);
+        log.info("Direct permission {} revoked from user {}", permissionId, userId);
+    }
+
     // ─── private helpers ────────────────────────────────────────────────────
 
     private User loadUser(UUID userId) {
         return userRepository.findById(userId)
+                .filter(u -> UserStatus.DELETED != u.getStatus())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
+    }
+
+    private User loadUserWithPermissions(UUID userId) {
+        return userRepository.findByIdWithGroupsAndPermissions(userId)
                 .filter(u -> UserStatus.DELETED != u.getStatus())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
     }
