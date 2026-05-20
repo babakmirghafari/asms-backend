@@ -1,6 +1,11 @@
 package com.asms.domain;
 
+import com.asms.domain.enums.DeliveryMethod;
+import com.asms.domain.enums.Department;
+import com.asms.domain.enums.TemporaryPasswordExpiry;
 import com.asms.domain.enums.UserStatus;
+import com.asms.domain.enums.converter.DeliveryMethodConverter;
+import com.asms.domain.enums.converter.DepartmentConverter;
 import com.asms.domain.enums.converter.UserStatusConverter;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -40,11 +45,25 @@ public class User {
     private String phoneNumber;
 
     @Column(name = "department")
-    private String department;
+    @Convert(converter = DepartmentConverter.class)
+    private Department department;
+
+    @Column(name = "manager")
+    private String manager;
 
     @Column(name = "status", nullable = false)
     @Convert(converter = UserStatusConverter.class)
     private UserStatus status;
+
+    @Column(name = "temporary_password_hash")
+    private String  temporaryPasswordHash;
+
+    @Column(name = "temporary_password_expiry")
+    private TemporaryPasswordExpiry temporaryPasswordExpiry;
+
+    @Column(name = "delivery_method", nullable = false)
+    @Convert(converter = DeliveryMethodConverter.class)
+    private DeliveryMethod deliveryMethod;
 
     @Column(name = "password_hash")
     private String passwordHash;
