@@ -5,9 +5,12 @@ import com.asms.domain.enums.converter.OrganizationStatusConverter;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -43,6 +46,10 @@ public class Organization {
 
     @Column(name = "parent_org_id")
     private UUID parentOrgId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_org_id", insertable = false, updatable = false)
+    private Organization parentOrganization;
 
     @Column(name = "data_residency")
     private String dataResidency;

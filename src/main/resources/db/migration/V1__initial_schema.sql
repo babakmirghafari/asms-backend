@@ -1,3 +1,7 @@
+-- Create dedicated schema (all tables live in asms, never in public)
+CREATE SCHEMA IF NOT EXISTS asms;
+SET search_path TO asms;
+
 -- ASMS Consolidated Schema (V1 + V2 + V3 merged)
 -- Multi-tenant isolation: all tables include org_id (ADR-006, RISK-002)
 -- Timestamps: TIMESTAMPTZ for timezone-aware audit (ADR-009)
@@ -43,9 +47,9 @@ CREATE TABLE users (
     id                      UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     username                VARCHAR(100) NOT NULL UNIQUE,
     email                   VARCHAR(255) NOT NULL UNIQUE,
-    first_name              VARCHAR(100),
-    last_name               VARCHAR(100),
+    full_name              VARCHAR(255),
     phone_number            VARCHAR(50),
+    department              VARCHAR(255),
     status                  INTEGER      NOT NULL DEFAULT 1,  -- UserStatus: 1=PENDING_ACTIVATION
     password_hash           TEXT,
     force_password_change   BOOLEAN      NOT NULL DEFAULT TRUE,

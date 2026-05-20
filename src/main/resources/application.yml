@@ -15,14 +15,17 @@ spring:
       max-lifetime: 1800000
 
   jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
     properties:
       hibernate:
-        ddl-auto: validate
-      open-in-view: false
-      default_schema: asms
+        default_schema: asms
   flyway:
     enabled: true
     locations: classpath:db/migration
+    schemas: asms
+    default-schema: asms
     baseline-on-migrate: false
 
   security:
