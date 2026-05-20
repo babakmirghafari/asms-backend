@@ -41,12 +41,14 @@ public interface PermissionImportRepository extends JpaRepository<PermissionImpo
     @Transactional
     @Query("""
             UPDATE PermissionImport pi
-            SET pi.status = com.asms.domain.enums.PermissionImportStatus.EXPIRED,
+            SET pi.status = :expired,
                 pi.updatedAt = :now
-            WHERE pi.status = com.asms.domain.enums.PermissionImportStatus.PENDING_COMMIT
+            WHERE pi.status = :pendingCommit
               AND pi.expiresAt < :now
             """)
-    int expireStaleSessions(@Param("now") OffsetDateTime now);
+    int expireStaleSessions(@Param("now") OffsetDateTime now,
+                            @Param("expired") PermissionImportStatus expired,
+                            @Param("pendingCommit") PermissionImportStatus pendingCommit);
 
     /**
      * Find all import sessions for an organization, ordered by creation time descending.
