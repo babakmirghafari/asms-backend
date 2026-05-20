@@ -9,20 +9,17 @@ import org.mapstruct.MappingConstants;
 import org.mapstruct.Named;
 import org.mapstruct.ValueMapping;
 
-/**
- * MapStruct mapper for {@link Session} domain entity ↔ {@link SessionDto} contract DTO.
- *
- * <p>SessionStatus → SessionDto.StatusEnum: ACTIVE, EXPIRED, REVOKED names match directly.
- * Explicit {@code @ValueMapping} method is provided per the enum conversion pattern.
- */
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 public interface SessionMapper {
 
-    @Mapping(target = "organizationId", source = "orgId")
+    @Mapping(target = "userId", source = "user.id")
+    @Mapping(target = "username", source = "user.username")
+    @Mapping(target = "organizationId", source = "organization.id")
+    @Mapping(target = "organizationName", source = "organization.name")
     @Mapping(target = "status", source = "status")
     @Mapping(target = "riskScore", source = "riskScore", qualifiedByName = "shortToFloat")
-    // lastActivityAt approximated by createdAt (domain has no dedicated field)
     @Mapping(target = "lastActivityAt", source = "createdAt")
+    @Mapping(target = "mfaVerified", ignore = true)
     SessionDto toDto(Session session);
 
     @ValueMapping(source = MappingConstants.ANY_REMAINING, target = MappingConstants.THROW_EXCEPTION)

@@ -13,25 +13,12 @@ import org.mapstruct.ValueMapping;
 
 import java.math.BigDecimal;
 
-/**
- * MapStruct mapper for {@link Alert} domain entity ↔ {@link AlertDto} contract DTO.
- *
- * <p>AlertDto (v2.0.0) exposes: id, alertType, severity, status, riskScore, riskLevel,
- * title, description, actorId, actorUsername, organizationId, ipAddress,
- * acknowledgedBy, acknowledgedAt, acknowledgeNote, createdAt.
- *
- * <p>AlertSeverity → AlertDto.SeverityEnum and AlertStatus → AlertDto.StatusEnum are mapped
- * via explicit {@code @ValueMapping} methods — enum names match directly.
- *
- * <p>AlertRiskLevel → AlertDto.RiskLevelEnum is also mapped via {@code @ValueMapping}
- * now that the domain field is a typed enum (was raw String before C-4 fix).
- */
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 public interface AlertMapper {
 
     @Mapping(target = "alertType", source = "type")
-    @Mapping(target = "organizationId", source = "orgId")
-    @Mapping(target = "actorId", source = "userId")
+    @Mapping(target = "organizationId", source = "organization.id")
+    @Mapping(target = "actorId", source = "user.id")
     @Mapping(target = "severity", source = "severity")
     @Mapping(target = "status", source = "status")
     @Mapping(target = "riskScore", source = "riskScore", qualifiedByName = "bigDecimalToFloat")

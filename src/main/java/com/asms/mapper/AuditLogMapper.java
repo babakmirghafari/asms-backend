@@ -8,20 +8,11 @@ import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants;
 import org.mapstruct.Named;
 
-/**
- * MapStruct mapper for {@link AuditLog} domain entity ↔ contract DTO types.
- *
- * <p>AuditLogEntryDto (v2.0.0): id, eventType, actorId, actorUsername, targetType,
- * targetId, organizationId, ipAddress, outcome, details, timestamp, previousHash.
- *
- * <p>ActivityLogDto (v2.0.0): id, eventType, category, actorId, actorUsername,
- * targetType, targetId, targetDisplayName, organizationId, ipAddress,
- * outcome, summary, timestamp.
- */
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 public interface AuditLogMapper {
 
-    @Mapping(target = "organizationId", source = "orgId")
+    @Mapping(target = "organizationId", source = "organization.id")
+    @Mapping(target = "actorId", source = "actor.id")
     @Mapping(target = "eventType", source = "action")
     @Mapping(target = "timestamp", source = "createdAt")
     @Mapping(target = "ipAddress", ignore = true)
@@ -29,7 +20,8 @@ public interface AuditLogMapper {
     @Mapping(target = "details", ignore = true)
     AuditLogEntryDto toAuditLogEntryDto(AuditLog auditLog);
 
-    @Mapping(target = "organizationId", source = "orgId")
+    @Mapping(target = "organizationId", source = "organization.id")
+    @Mapping(target = "actorId", source = "actor.id")
     @Mapping(target = "eventType", source = "action")
     @Mapping(target = "timestamp", source = "createdAt")
     @Mapping(target = "category", source = "action", qualifiedByName = "actionToCategory")
@@ -39,10 +31,6 @@ public interface AuditLogMapper {
     @Mapping(target = "targetDisplayName", ignore = true)
     ActivityLogDto toActivityLogDto(AuditLog auditLog);
 
-    /**
-     * Derives ActivityLogDto.CategoryEnum from the audit log action string.
-     * Returns null for unrecognised action prefixes rather than throwing.
-     */
     @Named("actionToCategory")
     static ActivityLogDto.CategoryEnum actionToCategory(String action) {
         if (action == null) return null;

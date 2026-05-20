@@ -13,22 +13,13 @@ import org.mapstruct.ValueMapping;
 
 import java.time.OffsetDateTime;
 
-/**
- * MapStruct mapper for {@link Membership} domain entity ↔ {@link MembershipDto} contract DTO.
- *
- * <p>Generated implementation is a Spring component — inject via constructor injection.
- * Handlers use this mapper; services never touch DTOs directly.
- *
- * <p>MembershipStatus domain values vs MembershipDto.StatusEnum contract values:
- * PENDING     → NULL  (no contract equivalent — membership not yet confirmed)
- * ACTIVE      → ACTIVE
- * SUSPENDED   → SUSPENDED
- * REMOVED     → NULL  (no contract equivalent — terminal state, excluded from API surface)
- */
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 public interface MembershipMapper {
 
-    @Mapping(target = "organizationId", source = "orgId")
+    @Mapping(target = "userId", source = "user.id")
+    @Mapping(target = "username", source = "user.username")
+    @Mapping(target = "organizationId", source = "organization.id")
+    @Mapping(target = "organizationName", source = "organization.name")
     @Mapping(target = "status", source = "status")
     MembershipDto toDto(Membership membership);
 
@@ -36,16 +27,11 @@ public interface MembershipMapper {
     @ValueMapping(source = "REMOVED", target = MappingConstants.NULL)
     MembershipDto.StatusEnum toStatusEnum(MembershipStatus status);
 
-    /**
-     * Converts a {@link CreateMembershipRequestDto} to a new {@link Membership} domain entity.
-     * Defaults role to MEMBER and status to ACTIVE per business rules.
-     */
+    // Scalar fields only — service must set user and organization from their repositories.
     @Named("toMembershipEntity")
     default Membership toMembershipEntity(CreateMembershipRequestDto dto) {
         if (dto == null) return Membership.builder().build();
         return Membership.builder()
-                .userId(dto.getUserId())
-                .orgId(dto.getOrganizationId())
                 .role(UserRole.MEMBER)
                 .status(MembershipStatus.ACTIVE)
                 .createdAt(OffsetDateTime.now())

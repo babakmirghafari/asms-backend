@@ -13,19 +13,10 @@ import org.mapstruct.ValueMapping;
 
 import java.time.OffsetDateTime;
 
-/**
- * MapStruct mapper for {@link Organization} domain entity ↔ {@link OrganizationDto} contract DTO.
- *
- * <p>Generated implementation is a Spring component — inject via constructor injection.
- * Handlers use this mapper; services never touch DTOs directly.
- *
- * <p>OrganizationStatus → OrganizationDto.StatusEnum uses {@code @ValueMapping}.
- * DELETED is mapped to NULL — deleted organizations are excluded from the API surface.
- */
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 public interface OrganizationMapper {
 
-    @Mapping(target = "parentOrganizationId", source = "parentOrgId")
+    @Mapping(target = "parentOrganizationId", source = "parentOrganization.id")
     @Mapping(target = "status", source = "status")
     OrganizationDto toDto(Organization org);
 
@@ -34,17 +25,14 @@ public interface OrganizationMapper {
     @ValueMapping(source = MappingConstants.ANY_REMAINING, target = MappingConstants.NULL)
     OrganizationDto.StatusEnum toStatusEnum(OrganizationStatus status);
 
-    /**
-     * Converts a {@link CreateOrganizationRequestDto} to a new {@link Organization} entity.
-     * Slug generation is delegated to the handler prior to this call since slug is a domain concern.
-     */
+    // Scalar fields only — if dto.getParentOrganizationId() is non-null, service must
+    // load the parent Organization and call entity.setParentOrganization(parent).
     @Named("toOrganizationEntity")
     default Organization toOrganizationEntity(CreateOrganizationRequestDto dto, String slug) {
         if (dto == null) return Organization.builder().build();
         return Organization.builder()
                 .name(dto.getName())
                 .slug(slug)
-                .parentOrgId(dto.getParentOrganizationId())
                 .logoUrl(dto.getLogoUrl())
                 .status(OrganizationStatus.ACTIVE)
                 .createdAt(OffsetDateTime.now())
@@ -52,10 +40,6 @@ public interface OrganizationMapper {
                 .build();
     }
 
-    /**
-     * Converts an {@link UpdateOrganizationRequestDto} to a partial {@link Organization} patch.
-     * Only non-null DTO fields are populated; the service applies them selectively.
-     */
     @Named("toOrganizationPatch")
     default Organization toOrganizationPatch(UpdateOrganizationRequestDto dto) {
         if (dto == null) return Organization.builder().build();

@@ -7,7 +7,6 @@ import com.asms.domain.enums.IntegrationHealthStatus;
 import com.asms.model.ApplicationDto;
 import com.asms.model.CreateApplicationRequestDto;
 import com.asms.model.UpdateApplicationRequestDto;
-import com.asms.security.TenantContext;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants;
@@ -16,21 +15,10 @@ import org.mapstruct.ValueMapping;
 
 import java.time.OffsetDateTime;
 
-/**
- * MapStruct mapper for {@link Application} domain entity ↔ {@link ApplicationDto} contract DTO.
- *
- * <p>Generated implementation is a Spring component — inject via constructor injection.
- * Handlers use this mapper; services never touch DTOs directly.
- *
- * <p>Enum conversions use {@code @ValueMapping}: domain enum → DTO enum by name.
- * ConnectorType names match ApplicationDto.ConnectorTypeEnum names exactly (OIDC, SAML, API_TOKEN).
- * ApplicationStatus names match ApplicationDto.StatusEnum names exactly (ACTIVE, INACTIVE, SUSPENDED).
- * IntegrationHealthStatus names match ApplicationDto.IntegrationHealthStatusEnum names exactly.
- */
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 public interface ApplicationMapper {
 
-    @Mapping(target = "organizationId", source = "orgId")
+    @Mapping(target = "organizationId", source = "organization.id")
     @Mapping(target = "connectorType", source = "type")
     @Mapping(target = "status", source = "status")
     @Mapping(target = "integrationHealthStatus", source = "integrationHealthStatus")
@@ -53,21 +41,14 @@ public interface ApplicationMapper {
     @ValueMapping(source = "NEVER_CONNECTED", target = "NEVER_CONNECTED")
     ApplicationDto.IntegrationHealthStatusEnum toIntegrationHealthStatusEnum(IntegrationHealthStatus status);
 
-    /**
-     * Converts a {@link CreateApplicationRequestDto} to a new {@link Application} entity.
-     * The org ID is sourced from the DTO if present, otherwise from {@link TenantContext}.
-     */
+    // Scalar fields only — service must set entity.setOrganization(org) after calling this.
     @Named("toApplicationEntity")
     default Application toApplicationEntity(CreateApplicationRequestDto dto) {
         if (dto == null) return Application.builder().build();
-        java.util.UUID orgId = dto.getOrganizationId() != null
-                ? dto.getOrganizationId()
-                : TenantContext.getRequiredOrgId();
         ConnectorType type = dto.getConnectorType() != null
                 ? ConnectorType.valueOf(dto.getConnectorType().getValue())
                 : null;
         return Application.builder()
-                .orgId(orgId)
                 .name(dto.getName())
                 .type(type)
                 .redirectUris(dto.getRedirectUris())
@@ -79,10 +60,6 @@ public interface ApplicationMapper {
                 .build();
     }
 
-    /**
-     * Converts an {@link UpdateApplicationRequestDto} to a partial {@link Application} patch.
-     * Only non-null DTO fields are populated; the service applies them selectively.
-     */
     @Named("toApplicationPatch")
     default Application toApplicationPatch(UpdateApplicationRequestDto dto) {
         if (dto == null) return Application.builder().build();
