@@ -7,24 +7,30 @@ import com.asms.model.UpdateUserRequestDto;
 import com.asms.model.UserDto;
 import org.mapstruct.*;
 
-/**
- * MapStruct mapper for {@link User} domain entity ↔ {@link UserDto} contract DTO.
- *
- * <p>Generated implementation is a Spring component — inject via {@code @Autowired}
- * or constructor injection. Handlers use this mapper; services never touch DTOs directly.
- */
+import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 public interface UserMapper {
 
     @Mapping(target = "status", source = "status")
+    @Mapping(target = "password", ignore = true)
+    @Mapping(target = "displayName", ignore = true)
+    @Mapping(target = "organizationIds", ignore = true)
+    @Mapping(target = "workdays", ignore = true)
+    @Mapping(target = "ipRestriction", ignore = true)
+    @Mapping(target = "workHours", ignore = true)
+    @Mapping(target = "createdBy", ignore = true)
+    @Mapping(target = "updatedBy", ignore = true)
     UserDto toDto(User user);
 
     @ValueMapping(source = "PENDING_ACTIVATION", target = MappingConstants.NULL)
     @ValueMapping(source = "DELETED", target = MappingConstants.NULL)
     UserDto.StatusEnum toStatusEnum(UserStatus status);
 
-    default User toUserEntityFromCreateUserRequestDto(CreateUserRequestDto createUserRequestDto) {
-        return toUser(createUserRequestDto);
+    default User toUserEntityFromCreateUserRequestDto(CreateUserRequestDto dto) {
+        return toUser(dto);
     }
 
     @Named("toUserEntity")
@@ -32,24 +38,22 @@ public interface UserMapper {
         if (dto == null) return User.builder().build();
         return User.builder()
                 .username(dto.getUsername())
+                .fullName(dto.getFullName())
                 .email(dto.getEmail())
                 .phoneNumber(dto.getPhoneNumber())
+                .department(dto.getDepartment())
                 .build();
     }
 
-    /**
-     * Converts an {@link UpdateUserRequestDto} into a partial {@link User} patch object.
-     * Only non-null DTO fields are populated; the service applies them selectively.
-     *
-     * @param dto the incoming update request
-     * @return a partial User carrying the fields to update
-     */
     @Named("toUserPatch")
     default User toUserPatch(UpdateUserRequestDto dto) {
         if (dto == null) return User.builder().build();
+        String fullName = Stream.of(dto.getFirstName(), dto.getLastName())
+                .filter(Objects::nonNull)
+                .collect(Collectors.joining(" "))
+                .trim();
         return User.builder()
-                .firstName(dto.getFirstName())
-                .lastName(dto.getLastName())
+                .fullName(fullName.isEmpty() ? null : fullName)
                 .email(dto.getEmail())
                 .phoneNumber(dto.getPhoneNumber())
                 .build();
