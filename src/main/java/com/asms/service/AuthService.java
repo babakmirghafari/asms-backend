@@ -225,7 +225,7 @@ public class AuthService {
 
         // Look up the membership to verify the user belongs to this org
         if (userId != null && orgId != null) {
-            Optional<Membership> membership = membershipRepository.findByUserIdAndOrgId(userId, orgId);
+            Optional<Membership> membership = membershipRepository.findByUserIdAndOrganizationId(userId, orgId);
             if (membership.isEmpty()) {
                 log.warn("User {} is not a member of org {}", userId, orgId);
             }
@@ -261,7 +261,7 @@ public class AuthService {
 
     private List<String> resolveRoles(UUID userId, UUID orgId) {
         if (userId == null || orgId == null) return List.of(UserRole.MEMBER.name());
-        return membershipRepository.findByUserIdAndOrgId(userId, orgId)
+        return membershipRepository.findByUserIdAndOrganizationId(userId, orgId)
                 .map(m -> List.of(m.getRole().name()))
                 .orElse(List.of(UserRole.MEMBER.name()));
     }

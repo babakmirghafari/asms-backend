@@ -1,8 +1,12 @@
 package com.asms.service;
 
 import com.asms.domain.AuditLog;
+import com.asms.domain.Organization;
+import com.asms.domain.User;
 import com.asms.domain.enums.AuditSeverity;
 import com.asms.repository.AuditLogRepository;
+import com.asms.repository.OrganizationRepository;
+import com.asms.repository.UserRepository;
 import com.asms.security.TenantContext;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -38,6 +42,8 @@ public class AuditService {
     private static final String GENESIS_HASH = "0".repeat(64);
 
     private final AuditLogRepository auditLogRepository;
+    private final OrganizationRepository organizationRepository;
+    private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
 
     /**
@@ -64,6 +70,8 @@ public class AuditService {
         }
         UUID actorId  = TenantContext.getUserId();
         String actor  = TenantContext.getUsername();
+        Organization organization = organizationRepository.getReferenceById(orgId);
+        User actorUser = actorId != null ? userRepository.getReferenceById(actorId) : null;
 
         // Serialise before/after to JSON
         String beforeJson = toJson(beforeState);
@@ -88,8 +96,8 @@ public class AuditService {
         );
 
         AuditLog entry = AuditLog.builder()
-                .orgId(orgId)
-                .actorId(actorId)
+                .organization(organization)
+                .actor(actorUser)
                 .actorUsername(actor)
                 .targetType(targetType)
                 .targetId(targetId)

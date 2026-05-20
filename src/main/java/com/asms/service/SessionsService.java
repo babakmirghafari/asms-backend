@@ -76,7 +76,7 @@ public class SessionsService {
     private Session loadSession(UUID sessionId) {
         UUID orgId = TenantContext.getOrgId();
         if (orgId != null) {
-            return sessionRepository.findByOrgIdAndId(orgId, sessionId)
+            return sessionRepository.findByOrganizationIdAndId(orgId, sessionId)
                     .orElseThrow(() -> new ResourceNotFoundException("Session not found: " + sessionId));
         }
         return sessionRepository.findById(sessionId)

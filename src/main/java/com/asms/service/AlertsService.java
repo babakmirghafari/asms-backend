@@ -126,7 +126,7 @@ public class AlertsService {
     private Alert loadAlert(UUID alertId) {
         UUID orgId = TenantContext.getOrgId();
         if (orgId != null) {
-            return alertRepository.findByOrgIdAndId(orgId, alertId)
+            return alertRepository.findByOrganizationIdAndId(orgId, alertId)
                     .orElseThrow(() -> new ResourceNotFoundException("Alert not found: " + alertId));
         }
         return alertRepository.findById(alertId)

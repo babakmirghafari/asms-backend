@@ -16,13 +16,13 @@ import java.util.UUID;
 @Repository
 public interface PermissionRepository extends JpaRepository<Permission, UUID> {
 
-    Optional<Permission> findByOrgIdAndId(UUID orgId, UUID id);
+    Optional<Permission> findByOrganizationIdAndId(UUID organizationId, UUID id);
 
-    boolean existsByOrgIdAndName(UUID orgId, String name);
+    boolean existsByOrganizationIdAndName(UUID organizationId, String name);
 
-    Page<Permission> findByOrgIdAndStatus(UUID orgId, PermissionStatus status, Pageable pageable);
+    Page<Permission> findByOrganizationIdAndStatus(UUID organizationId, PermissionStatus status, Pageable pageable);
 
-    Page<Permission> findByOrgId(UUID orgId, Pageable pageable);
+    Page<Permission> findByOrganizationId(UUID organizationId, Pageable pageable);
 
     /**
      * Returns all ACTIVE permissions directly assigned to a user via any group,
@@ -33,7 +33,7 @@ public interface PermissionRepository extends JpaRepository<Permission, UUID> {
             JOIN p.permissionGroups pg
             JOIN pg.members u
             WHERE u.id = :userId
-              AND pg.orgId = :orgId
+              AND pg.organization.id = :orgId
               AND p.status = :active
             """)
     List<Permission> findGroupPermissionsForUser(@Param("userId") UUID userId,
@@ -43,5 +43,5 @@ public interface PermissionRepository extends JpaRepository<Permission, UUID> {
     /**
      * Returns all ACTIVE permissions in an org, for CSV export / simulation.
      */
-    List<Permission> findByOrgIdAndStatus(UUID orgId, PermissionStatus status);
+    List<Permission> findByOrganizationIdAndStatus(UUID organizationId, PermissionStatus status);
 }

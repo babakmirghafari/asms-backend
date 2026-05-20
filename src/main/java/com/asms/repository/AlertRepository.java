@@ -16,13 +16,13 @@ import java.util.UUID;
 @Repository
 public interface AlertRepository extends JpaRepository<Alert, UUID> {
 
-    Optional<Alert> findByOrgIdAndId(UUID orgId, UUID id);
+    Optional<Alert> findByOrganizationIdAndId(UUID organizationId, UUID id);
 
-    Page<Alert> findByOrgId(UUID orgId, Pageable pageable);
+    Page<Alert> findByOrganizationId(UUID organizationId, Pageable pageable);
 
     @Query("""
             SELECT a FROM Alert a
-            WHERE a.orgId = :orgId
+            WHERE a.organization.id = :orgId
               AND (:type IS NULL OR a.type = :type)
               AND (:status IS NULL OR a.status = :status)
             ORDER BY a.createdAt DESC
@@ -34,7 +34,7 @@ public interface AlertRepository extends JpaRepository<Alert, UUID> {
 
     @Query("""
             SELECT COUNT(a) FROM Alert a
-            WHERE a.orgId = :orgId AND a.status = :status AND a.severity = :severity
+            WHERE a.organization.id = :orgId AND a.status = :status AND a.severity = :severity
             """)
     long countOpenBySeverity(@Param("orgId") UUID orgId,
                               @Param("status") AlertStatus status,

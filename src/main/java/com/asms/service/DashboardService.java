@@ -53,11 +53,11 @@ public class DashboardService {
         long medium   = alertRepository.countOpenBySeverity(orgId, AlertStatus.OPEN, AlertSeverity.MEDIUM);
         long high     = alertRepository.countOpenBySeverity(orgId, AlertStatus.OPEN, AlertSeverity.HIGH);
         long critical = alertRepository.countOpenBySeverity(orgId, AlertStatus.OPEN, AlertSeverity.CRITICAL);
-        long activeSessions = sessionRepository.countByOrgIdAndStatus(orgId, SessionStatus.ACTIVE);
+        long activeSessions = sessionRepository.countByOrganizationIdAndStatus(orgId, SessionStatus.ACTIVE);
         long totalUsers     = userRepository.countNonDeleted(UserStatus.DELETED);
         long activeUsers    = userRepository.countByStatus(UserStatus.ACTIVE);
         long lockedUsers    = userRepository.countByStatus(UserStatus.LOCKED);
-        long recentActivity = auditLogRepository.countByOrgIdAndCreatedAtAfter(
+        long recentActivity = auditLogRepository.countByOrganizationIdAndCreatedAtAfter(
                 orgId, OffsetDateTime.now().minusHours(24));
 
         return new DashboardSummary(low, medium, high, critical,

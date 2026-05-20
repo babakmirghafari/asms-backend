@@ -16,13 +16,13 @@ import java.util.UUID;
 @Repository
 public interface ApplicationRepository extends JpaRepository<Application, UUID> {
 
-    Optional<Application> findByOrgIdAndId(UUID orgId, UUID id);
+    Optional<Application> findByOrganizationIdAndId(UUID organizationId, UUID id);
 
-    boolean existsByOrgIdAndName(UUID orgId, String name);
+    boolean existsByOrganizationIdAndName(UUID organizationId, String name);
 
     @Query("""
             SELECT a FROM Application a
-            WHERE a.orgId = :orgId
+            WHERE a.organization.id = :orgId
               AND a.status != com.asms.domain.enums.ApplicationStatus.DELETED
               AND (:type IS NULL OR a.type = :type)
             """)

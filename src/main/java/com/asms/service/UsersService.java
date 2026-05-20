@@ -91,8 +91,7 @@ public class UsersService {
     public User updateUser(UUID userId, User patch) {
         User user = loadUser(userId);
         User before = copyForAudit(user);
-        if (patch.getFirstName() != null)   user.setFirstName(patch.getFirstName());
-        if (patch.getLastName() != null)    user.setLastName(patch.getLastName());
+        if (patch.getFullName() != null)    user.setFullName(patch.getFullName());
         if (patch.getEmail() != null)       user.setEmail(patch.getEmail());
         if (patch.getPhoneNumber() != null) user.setPhoneNumber(patch.getPhoneNumber());
         user.setUpdatedAt(OffsetDateTime.now());
@@ -141,10 +140,10 @@ public class UsersService {
         return User.builder()
                 .id(user.getId())
                 .username(user.getUsername())
+                .fullName(user.getFullName())
                 .email(user.getEmail())
-                .firstName(user.getFirstName())
-                .lastName(user.getLastName())
                 .phoneNumber(user.getPhoneNumber())
+                .department(user.getDepartment())
                 .status(user.getStatus())
                 .mfaEnabled(user.isMfaEnabled())
                 .failedLoginAttempts(user.getFailedLoginAttempts())

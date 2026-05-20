@@ -41,10 +41,9 @@ public interface UserRepository extends JpaRepository<User, UUID> {
                     AND m.status = :activeKey
               )
               AND (:search IS NULL
-                   OR LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%'))
-                   OR LOWER(u.email)    LIKE LOWER(CONCAT('%', :search, '%'))
-                   OR LOWER(u.first_name) LIKE LOWER(CONCAT('%', :search, '%'))
-                   OR LOWER(u.last_name)  LIKE LOWER(CONCAT('%', :search, '%')))
+                   OR LOWER(u.username)  LIKE LOWER(CONCAT('%', :search, '%'))
+                   OR LOWER(u.email)     LIKE LOWER(CONCAT('%', :search, '%'))
+                   OR LOWER(u.full_name) LIKE LOWER(CONCAT('%', :search, '%')))
             """,
             countQuery = """
             SELECT COUNT(*) FROM users u
@@ -56,10 +55,9 @@ public interface UserRepository extends JpaRepository<User, UUID> {
                     AND m.status = :activeKey
               )
               AND (:search IS NULL
-                   OR LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%'))
-                   OR LOWER(u.email)    LIKE LOWER(CONCAT('%', :search, '%'))
-                   OR LOWER(u.first_name) LIKE LOWER(CONCAT('%', :search, '%'))
-                   OR LOWER(u.last_name)  LIKE LOWER(CONCAT('%', :search, '%')))
+                   OR LOWER(u.username)  LIKE LOWER(CONCAT('%', :search, '%'))
+                   OR LOWER(u.email)     LIKE LOWER(CONCAT('%', :search, '%'))
+                   OR LOWER(u.full_name) LIKE LOWER(CONCAT('%', :search, '%')))
             """,
             nativeQuery = true)
     Page<User> findAllByOrgId(@Param("orgId") UUID orgId,

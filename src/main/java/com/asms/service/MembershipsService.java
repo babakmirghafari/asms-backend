@@ -48,7 +48,7 @@ public class MembershipsService {
                         "Membership not found: " + membershipId));
         // AC-13: ensure the membership belongs to caller's org
         UUID callerOrg = TenantContext.getOrgId();
-        if (callerOrg != null && !callerOrg.equals(m.getOrgId())) {
+        if (callerOrg != null && !callerOrg.equals(m.getOrganization().getId())) {
             throw new AccessDeniedException("Cannot delete membership from a different organization");
         }
         m.setStatus(MembershipStatus.REMOVED);
@@ -64,7 +64,7 @@ public class MembershipsService {
                         "Membership not found: " + membershipId));
         // AC-13: org scope validation
         UUID callerOrg = TenantContext.getOrgId();
-        if (callerOrg != null && !callerOrg.equals(m.getOrgId())) {
+        if (callerOrg != null && !callerOrg.equals(m.getOrganization().getId())) {
             throw new AccessDeniedException("Cannot access membership from a different organization");
         }
         return m;

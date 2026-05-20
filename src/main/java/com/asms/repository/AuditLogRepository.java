@@ -27,7 +27,7 @@ import java.util.UUID;
 public interface AuditLogRepository extends JpaRepository<AuditLog, UUID>,
         JpaSpecificationExecutor<AuditLog> {
 
-    Optional<AuditLog> findByOrgIdAndId(UUID orgId, UUID id);
+    Optional<AuditLog> findByOrganizationIdAndId(UUID organizationId, UUID id);
 
     /**
      * Finds the most recently created audit log entry per org.
@@ -35,11 +35,11 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID>,
      */
     @Query("""
             SELECT a FROM AuditLog a
-            WHERE a.orgId = :orgId
+            WHERE a.organization.id = :orgId
             ORDER BY a.createdAt DESC
             LIMIT 1
             """)
     Optional<AuditLog> findLatestByOrgId(@Param("orgId") UUID orgId);
 
-    long countByOrgIdAndCreatedAtAfter(UUID orgId, OffsetDateTime since);
+    long countByOrganizationIdAndCreatedAtAfter(UUID organizationId, OffsetDateTime since);
 }

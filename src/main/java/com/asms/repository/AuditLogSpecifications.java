@@ -23,12 +23,12 @@ public final class AuditLogSpecifications {
     private AuditLogSpecifications() {}
 
     public static Specification<AuditLog> belongsToOrg(UUID orgId) {
-        return (root, query, cb) -> cb.equal(root.get("orgId"), orgId);
+        return (root, query, cb) -> cb.equal(root.get("organization").get("id"), orgId);
     }
 
     public static Specification<AuditLog> actorIdEquals(UUID actorId) {
         if (actorId == null) return null;
-        return (root, query, cb) -> cb.equal(root.get("actorId"), actorId);
+        return (root, query, cb) -> cb.equal(root.get("actor").get("id"), actorId);
     }
 
     public static Specification<AuditLog> actionEquals(String action) {

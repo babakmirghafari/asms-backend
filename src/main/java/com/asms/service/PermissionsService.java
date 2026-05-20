@@ -1,6 +1,7 @@
 package com.asms.service;
 
 import com.asms.constant.AuditActions;
+import com.asms.domain.Organization;
 import com.asms.domain.Permission;
 import com.asms.domain.PermissionImport;
 import com.asms.domain.enums.PermissionImportStatus;
@@ -11,6 +12,7 @@ import com.asms.exception.ResourceNotFoundException;
 import com.asms.exception.ValidationException;
 import com.asms.model.PermissionImportValidateResponseDtoIssuesInner;
 import com.asms.model.PermissionsSimulateRequestDto;
+import com.asms.repository.OrganizationRepository;
 import com.asms.repository.PermissionImportRepository;
 import com.asms.repository.PermissionRepository;
 import com.asms.security.TenantContext;
@@ -61,6 +63,7 @@ public class PermissionsService {
     private static final String NAMING_PATTERN = "^[a-z0-9_-]+\\.[a-z0-9_-]+\\.[a-z0-9_-]+$";
 
     private final PermissionRepository permissionRepository;
+    private final OrganizationRepository organizationRepository;
     private final PermissionImportRepository permissionImportRepository;
     private final EffectivePermissionService effectivePermissionService;
     private final AuditService auditService;
@@ -77,7 +80,8 @@ public class PermissionsService {
      */
     @Transactional
     public Permission createPermission(Permission perm) {
-        log.debug("Create permission: {} in org: {}", perm.getName(), perm.getOrgId());
+        log.debug("Create permission: {} in org: {}", perm.getName(),
+                perm.getOrganization() != null ? perm.getOrganization().getId() : null);
 
         if (!perm.getName().matches(NAMING_PATTERN)) {
             throw new ValidationException("INVALID_PERMISSION_NAME",
@@ -112,10 +116,10 @@ public class PermissionsService {
             Integer page, Integer size, UUID organizationId, String status) {
         UUID orgId = organizationId != null ? organizationId : TenantContext.getRequiredOrgId();
         if (status != null) {
-            return permissionRepository.findByOrgIdAndStatus(orgId, PermissionStatus.valueOf(status),
+            return permissionRepository.findByOrganizationIdAndStatus(orgId, PermissionStatus.valueOf(status),
                     PageRequest.of(page != null ? page : 0, size != null ? size : 20));
         }
-        return permissionRepository.findByOrgId(orgId,
+        return permissionRepository.findByOrganizationId(orgId,
                 PageRequest.of(page != null ? page : 0, size != null ? size : 20));
     }
 
@@ -334,6 +338,8 @@ public class PermissionsService {
 
         int committed = 0, skipped = 0, failed = 0;
         UUID orgId = importSession.getOrganizationId();
+        Organization organization = organizationRepository.findById(orgId)
+                .orElseThrow(() -> new ResourceNotFoundException("Organization not found: " + orgId));
 
         List<Integer> errorLineNumbers = new ArrayList<>();
         if (importSession.getIssuesJson() != null) {
@@ -370,7 +376,7 @@ public class PermissionsService {
                                     ? record.get("description") : null;
 
                             Permission perm = Permission.builder()
-                                    .orgId(orgId)
+                                    .organization(organization)
                                     .name(name)
                                     .description(description)
                                     .resource(resource != null ? resource : name.split("\\.")[0])
@@ -419,7 +425,7 @@ public class PermissionsService {
     private Permission loadPermission(UUID permissionId) {
         UUID orgId = TenantContext.getOrgId();
         if (orgId != null) {
-            return permissionRepository.findByOrgIdAndId(orgId, permissionId)
+            return permissionRepository.findByOrganizationIdAndId(orgId, permissionId)
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Permission not found: " + permissionId));
         }
@@ -441,7 +447,7 @@ public class PermissionsService {
         if (action == null || action.isBlank())
             errors.add("ERROR: Row " + rowNum + ": 'action' is required");
 
-        if (name != null && !name.isBlank() && permissionRepository.existsByOrgIdAndName(orgId, name)) {
+        if (name != null && !name.isBlank() && permissionRepository.existsByOrganizationIdAndName(orgId, name)) {
             errors.add("WARNING: Row " + rowNum + ": permission '" + name + "' already exists in org");
         }
 

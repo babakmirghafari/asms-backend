@@ -101,7 +101,7 @@ public class ApplicationsService {
     private Application loadApp(UUID applicationId) {
         UUID orgId = TenantContext.getOrgId();
         if (orgId != null) {
-            return applicationRepository.findByOrgIdAndId(orgId, applicationId)
+            return applicationRepository.findByOrganizationIdAndId(orgId, applicationId)
                     .orElseThrow(() -> new ResourceNotFoundException("Application not found: " + applicationId));
         }
         return applicationRepository.findById(applicationId)
@@ -110,7 +110,7 @@ public class ApplicationsService {
 
     private Application cloneForAudit(Application a) {
         return Application.builder()
-                .id(a.getId()).orgId(a.getOrgId()).name(a.getName()).type(a.getType())
+                .id(a.getId()).organization(a.getOrganization()).name(a.getName()).type(a.getType())
                 .clientId(a.getClientId()).clientSecretHash(a.getClientSecretHash())
                 .redirectUris(a.getRedirectUris()).samlEntityId(a.getSamlEntityId())
                 .status(a.getStatus()).integrationHealthStatus(a.getIntegrationHealthStatus())

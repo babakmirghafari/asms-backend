@@ -34,7 +34,7 @@ public class AuditLogsService {
     public AuditLog getAuditLogEntryById(UUID entryId) {
         UUID orgId = TenantContext.getOrgId();
         if (orgId != null) {
-            return auditLogRepository.findByOrgIdAndId(orgId, entryId)
+            return auditLogRepository.findByOrganizationIdAndId(orgId, entryId)
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Audit log entry not found: " + entryId));
         }

@@ -54,7 +54,7 @@ public class PermissionGroupsService {
         }
         group.setUpdatedAt(OffsetDateTime.now());
         PermissionGroup saved = permissionGroupRepository.save(group);
-        invalidatePermissionCache(memberIds, group.getOrgId());
+        invalidatePermissionCache(memberIds, group.getOrganization().getId());
         auditService.recordInfo("PERMISSION_GROUP", groupId, "GROUP_MEMBERS_ADDED", null, saved);
         return saved;
     }
@@ -76,7 +76,7 @@ public class PermissionGroupsService {
         PermissionGroup group = loadGroup(groupId);
         List<UUID> affectedUserIds = group.getMembers().stream().map(User::getId).toList();
         permissionGroupRepository.delete(group);
-        invalidatePermissionCache(affectedUserIds, group.getOrgId());
+        invalidatePermissionCache(affectedUserIds, group.getOrganization().getId());
         auditService.recordInfo("PERMISSION_GROUP", groupId,
                 "PERMISSION_GROUP_DELETED", group, null);
     }
@@ -95,7 +95,7 @@ public class PermissionGroupsService {
     public Page<PermissionGroup> listPermissionGroups(
             Integer page, Integer size, UUID organizationId) {
         UUID orgId = organizationId != null ? organizationId : TenantContext.getRequiredOrgId();
-        return permissionGroupRepository.findByOrgId(
+        return permissionGroupRepository.findByOrganizationId(
                 orgId, PageRequest.of(page != null ? page : 0, size != null ? size : 20));
     }
 
@@ -105,7 +105,7 @@ public class PermissionGroupsService {
         group.getMembers().removeIf(u -> u.getId().equals(userId));
         group.setUpdatedAt(OffsetDateTime.now());
         permissionGroupRepository.save(group);
-        invalidatePermissionCache(List.of(userId), group.getOrgId());
+        invalidatePermissionCache(List.of(userId), group.getOrganization().getId());
         auditService.recordInfo("PERMISSION_GROUP", groupId, "GROUP_MEMBER_REMOVED", null, null);
     }
 
@@ -125,7 +125,7 @@ public class PermissionGroupsService {
         group.setUpdatedAt(OffsetDateTime.now());
         PermissionGroup saved = permissionGroupRepository.save(group);
         List<UUID> affectedUserIds = saved.getMembers().stream().map(User::getId).toList();
-        invalidatePermissionCache(affectedUserIds, saved.getOrgId());
+        invalidatePermissionCache(affectedUserIds, saved.getOrganization().getId());
         auditService.recordInfo("PERMISSION_GROUP", groupId,
                 "PERMISSION_GROUP_UPDATED", null, saved);
         return saved;
@@ -136,7 +136,7 @@ public class PermissionGroupsService {
     private PermissionGroup loadGroup(UUID groupId) {
         UUID orgId = TenantContext.getOrgId();
         if (orgId != null) {
-            return permissionGroupRepository.findByOrgIdAndId(orgId, groupId)
+            return permissionGroupRepository.findByOrganizationIdAndId(orgId, groupId)
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Permission group not found: " + groupId));
         }

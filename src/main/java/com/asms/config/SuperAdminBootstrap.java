@@ -60,8 +60,7 @@ public class SuperAdminBootstrap {
         User superAdmin = User.builder()
                 .username(SUPER_ADMIN_USERNAME)
                 .email(SUPER_ADMIN_EMAIL)
-                .firstName("Super")
-                .lastName("Admin")
+                .fullName("Super Admin")
                 .status(UserStatus.ACTIVE)
                 .passwordHash(hashedPassword)
                 .forcePasswordChange(true)   // must change password on first login

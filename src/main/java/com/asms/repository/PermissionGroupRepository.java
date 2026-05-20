@@ -15,11 +15,11 @@ import java.util.UUID;
 @Repository
 public interface PermissionGroupRepository extends JpaRepository<PermissionGroup, UUID> {
 
-    Optional<PermissionGroup> findByOrgIdAndId(UUID orgId, UUID id);
+    Optional<PermissionGroup> findByOrganizationIdAndId(UUID organizationId, UUID id);
 
-    boolean existsByOrgIdAndName(UUID orgId, String name);
+    boolean existsByOrganizationIdAndName(UUID organizationId, String name);
 
-    Page<PermissionGroup> findByOrgId(UUID orgId, Pageable pageable);
+    Page<PermissionGroup> findByOrganizationId(UUID organizationId, Pageable pageable);
 
     /**
      * Returns all groups the user belongs to within an org.
@@ -29,7 +29,7 @@ public interface PermissionGroupRepository extends JpaRepository<PermissionGroup
             SELECT pg FROM PermissionGroup pg
             JOIN pg.members u
             WHERE u.id = :userId
-              AND pg.orgId = :orgId
+              AND pg.organization.id = :orgId
             """)
     List<PermissionGroup> findGroupsForUser(@Param("userId") UUID userId,
                                              @Param("orgId") UUID orgId);

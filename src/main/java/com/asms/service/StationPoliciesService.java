@@ -53,7 +53,7 @@ public class StationPoliciesService {
     @Transactional(readOnly = true)
     public Page<StationPolicy> listStationPolicies(Integer page, Integer size, UUID organizationId) {
         UUID orgId = organizationId != null ? organizationId : TenantContext.getRequiredOrgId();
-        return stationPolicyRepository.findByOrgId(
+        return stationPolicyRepository.findByOrganizationId(
                 orgId, PageRequest.of(page != null ? page : 0, size != null ? size : 20));
     }
 
@@ -84,7 +84,7 @@ public class StationPoliciesService {
     private StationPolicy loadPolicy(UUID policyId) {
         UUID orgId = TenantContext.getOrgId();
         if (orgId != null) {
-            return stationPolicyRepository.findByOrgIdAndId(orgId, policyId)
+            return stationPolicyRepository.findByOrganizationIdAndId(orgId, policyId)
                     .orElseThrow(() -> new ResourceNotFoundException("Station policy not found: " + policyId));
         }
         return stationPolicyRepository.findById(policyId)
@@ -93,7 +93,7 @@ public class StationPoliciesService {
 
     private StationPolicy cloneForAudit(StationPolicy p) {
         return StationPolicy.builder()
-                .id(p.getId()).orgId(p.getOrgId()).userId(p.getUserId())
+                .id(p.getId()).organization(p.getOrganization()).user(p.getUser())
                 .name(p.getName()).description(p.getDescription()).status(p.getStatus())
                 .allowedIps(p.getAllowedIps()).allowedDays(p.getAllowedDays())
                 .workHourStart(p.getWorkHourStart()).workHourEnd(p.getWorkHourEnd())

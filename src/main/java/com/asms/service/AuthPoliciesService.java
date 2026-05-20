@@ -26,7 +26,7 @@ public class AuthPoliciesService {
 
     @Transactional(readOnly = true)
     public AuthPolicy getAuthPolicyByOrganization(UUID organizationId) {
-        return authPolicyRepository.findByOrgId(organizationId)
+        return authPolicyRepository.findByOrganizationId(organizationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Auth policy not found for org: " + organizationId));
     }
 
@@ -58,7 +58,7 @@ public class AuthPoliciesService {
      */
     @Transactional
     public AuthPolicy updateAuthPolicy(UUID organizationId, AuthPolicyPatch patch) {
-        AuthPolicy policy = authPolicyRepository.findByOrgId(organizationId)
+        AuthPolicy policy = authPolicyRepository.findByOrganizationId(organizationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Auth policy not found for org: " + organizationId));
         AuthPolicy before = cloneForAudit(policy);
         if (patch.maxFailedLoginAttempts() != null)    policy.setMaxFailedAttempts(patch.maxFailedLoginAttempts());
@@ -76,7 +76,7 @@ public class AuthPoliciesService {
 
     private AuthPolicy cloneForAudit(AuthPolicy p) {
         return AuthPolicy.builder()
-                .id(p.getId()).orgId(p.getOrgId())
+                .id(p.getId()).organization(p.getOrganization())
                 .maxFailedAttempts(p.getMaxFailedAttempts()).lockoutDurationMinutes(p.getLockoutDurationMinutes())
                 .requireMfa(p.isRequireMfa()).passwordMinLength(p.getPasswordMinLength())
                 .passwordRequireUppercase(p.isPasswordRequireUppercase())

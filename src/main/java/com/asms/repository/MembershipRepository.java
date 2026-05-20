@@ -14,18 +14,18 @@ import java.util.UUID;
 @Repository
 public interface MembershipRepository extends JpaRepository<Membership, UUID> {
 
-    Optional<Membership> findByUserIdAndOrgId(UUID userId, UUID orgId);
+    Optional<Membership> findByUserIdAndOrganizationId(UUID userId, UUID organizationId);
 
-    boolean existsByUserIdAndOrgId(UUID userId, UUID orgId);
+    boolean existsByUserIdAndOrganizationId(UUID userId, UUID organizationId);
 
-    Page<Membership> findByOrgId(UUID orgId, Pageable pageable);
+    Page<Membership> findByOrganizationId(UUID organizationId, Pageable pageable);
 
     Page<Membership> findByUserId(UUID userId, Pageable pageable);
 
     @Query("""
             SELECT m FROM Membership m
-            WHERE (:orgId IS NULL OR m.orgId = :orgId)
-              AND (:userId IS NULL OR m.userId = :userId)
+            WHERE (:orgId IS NULL OR m.organization.id = :orgId)
+              AND (:userId IS NULL OR m.user.id = :userId)
             """)
     Page<Membership> findFiltered(@Param("orgId") UUID orgId,
                                    @Param("userId") UUID userId,

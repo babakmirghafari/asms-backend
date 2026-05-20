@@ -12,5 +12,5 @@ import java.util.UUID;
 @Repository
 public interface AuthPolicyRepository extends JpaRepository<AuthPolicy, UUID> {
 
-    Optional<AuthPolicy> findByOrgId(UUID orgId);
+    Optional<AuthPolicy> findByOrganizationId(UUID organizationId);
 }

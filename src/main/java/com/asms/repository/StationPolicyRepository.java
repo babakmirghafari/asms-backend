@@ -13,11 +13,11 @@ import java.util.UUID;
 @Repository
 public interface StationPolicyRepository extends JpaRepository<StationPolicy, UUID> {
 
-    Optional<StationPolicy> findByOrgIdAndId(UUID orgId, UUID id);
+    Optional<StationPolicy> findByOrganizationIdAndId(UUID organizationId, UUID id);
 
     List<StationPolicy> findByUserId(UUID userId);
 
     Page<StationPolicy> findByUserId(UUID userId, Pageable pageable);
 
-    Page<StationPolicy> findByOrgId(UUID orgId, Pageable pageable);
+    Page<StationPolicy> findByOrganizationId(UUID organizationId, Pageable pageable);
 }

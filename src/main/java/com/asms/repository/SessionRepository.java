@@ -17,18 +17,18 @@ import java.util.UUID;
 @Repository
 public interface SessionRepository extends JpaRepository<Session, UUID> {
 
-    Optional<Session> findByOrgIdAndId(UUID orgId, UUID id);
+    Optional<Session> findByOrganizationIdAndId(UUID organizationId, UUID id);
 
     Optional<Session> findByTokenHash(String tokenHash);
 
-    long countByOrgIdAndStatus(UUID orgId, SessionStatus status);
+    long countByOrganizationIdAndStatus(UUID organizationId, SessionStatus status);
 
-    Page<Session> findByOrgId(UUID orgId, Pageable pageable);
+    Page<Session> findByOrganizationId(UUID organizationId, Pageable pageable);
 
     @Query("""
             SELECT s FROM Session s
-            WHERE s.orgId = :orgId
-              AND (:userId IS NULL OR s.userId = :userId)
+            WHERE s.organization.id = :orgId
+              AND (:userId IS NULL OR s.user.id = :userId)
               AND (:status IS NULL OR s.status = :status)
             """)
     Page<Session> findFiltered(@Param("orgId") UUID orgId,
@@ -39,7 +39,7 @@ public interface SessionRepository extends JpaRepository<Session, UUID> {
     @Modifying
     @Query("""
             UPDATE Session s SET s.status = :revoked, s.revokedAt = :now
-            WHERE s.userId = :userId AND s.status = :active
+            WHERE s.user.id = :userId AND s.status = :active
             """)
     int revokeAllForUser(@Param("userId") UUID userId,
                           @Param("now") OffsetDateTime now,
