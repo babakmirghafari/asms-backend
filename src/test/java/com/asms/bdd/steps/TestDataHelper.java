@@ -1,9 +1,11 @@
 package com.asms.bdd.steps;
 
+import com.asms.domain.enums.AlertRiskLevel;
 import com.asms.domain.enums.AlertSeverity;
 import com.asms.domain.enums.AlertStatus;
 import com.asms.domain.enums.AuditSeverity;
 import com.asms.domain.enums.MembershipStatus;
+import com.asms.domain.enums.OrganizationStatus;
 import com.asms.domain.enums.PermissionStatus;
 import com.asms.domain.enums.SessionStatus;
 import com.asms.domain.enums.UserRole;
@@ -30,8 +32,9 @@ public class TestDataHelper {
         String slug = "test-org-" + id.toString().substring(0, 8);
         jdbc.update("""
                 INSERT INTO organizations(id, name, slug, display_name, status, created_at, updated_at)
-                VALUES (?, ?, ?, ?, 'ACTIVE', now(), now())
-                """, id, "Test Org " + id.toString().substring(0, 8), slug, "Test Org");
+                VALUES (?, ?, ?, ?, ?, now(), now())
+                """, id, "Test Org " + id.toString().substring(0, 8), slug, "Test Org",
+                OrganizationStatus.ACTIVE.getKey());
         return id;
     }
 
@@ -40,9 +43,9 @@ public class TestDataHelper {
         UUID id = UUID.randomUUID();
         int statusKey = UserStatus.valueOf(status).getKey();
         jdbc.update("""
-                INSERT INTO users(id, username, email, first_name, last_name, status,
+                INSERT INTO users(id, username, email, full_name, status,
                     mfa_enabled, force_password_change, failed_login_attempts, created_at, updated_at)
-                VALUES (?, ?, ?, 'Test', 'User', ?, ?, ?, 0, now(), now())
+                VALUES (?, ?, ?, 'Test User', ?, ?, ?, 0, now(), now())
                 """, id, username, email, statusKey, mfaEnabled, forcePasswordChange);
         if (orgId != null) {
             jdbc.update("""
@@ -85,8 +88,8 @@ public class TestDataHelper {
         jdbc.update("""
                 INSERT INTO alerts(id, org_id, user_id, type, severity, status, title, description,
                     risk_score, risk_level, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, 'BDD Test Alert', 'Created by BDD test', 50, 'MEDIUM', now(), now())
-                """, id, orgId, userId, type, severityKey, statusKey);
+                VALUES (?, ?, ?, ?, ?, ?, 'BDD Test Alert', 'Created by BDD test', 50, ?, now(), now())
+                """, id, orgId, userId, type, severityKey, statusKey, AlertRiskLevel.MEDIUM.getKey());
         return id;
     }
 
@@ -183,9 +186,9 @@ public class TestDataHelper {
         UUID id = UUID.randomUUID();
         int statusKey = UserStatus.valueOf(status).getKey();
         jdbc.update("""
-                INSERT INTO users(id, username, email, first_name, last_name, status,
+                INSERT INTO users(id, username, email, full_name, status,
                     mfa_enabled, force_password_change, failed_login_attempts, created_at, updated_at)
-                VALUES (?, ?, ?, 'Test', 'User', ?, ?, ?, 0, now(), now())
+                VALUES (?, ?, ?, 'Test User', ?, ?, ?, 0, now(), now())
                 ON CONFLICT (username) DO UPDATE SET
                     status = EXCLUDED.status,
                     mfa_enabled = EXCLUDED.mfa_enabled,

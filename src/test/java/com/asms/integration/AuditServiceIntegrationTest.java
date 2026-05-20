@@ -3,6 +3,7 @@ package com.asms.integration;
 import com.asms.domain.AuditLog;
 import com.asms.domain.Organization;
 import com.asms.domain.User;
+import com.asms.domain.enums.OrganizationStatus;
 import com.asms.domain.enums.UserStatus;
 import com.asms.repository.AuditLogRepository;
 import com.asms.repository.OrganizationRepository;
@@ -52,7 +53,7 @@ class AuditServiceIntegrationTest extends BaseIntegrationTest {
         org = organizationRepository.save(Organization.builder()
                 .name("Audit Test Org")
                 .slug("audit-test-org-" + System.nanoTime())
-                .status("ACTIVE")
+                .status(OrganizationStatus.ACTIVE)
                 .createdAt(OffsetDateTime.now())
                 .updatedAt(OffsetDateTime.now())
                 .build());
@@ -82,8 +83,8 @@ class AuditServiceIntegrationTest extends BaseIntegrationTest {
         AuditLog entry = auditService.recordInfo("USER", actor.getId(), "USER_CREATED", null, "after-state");
 
         AuditLog persisted = auditLogRepository.findById(entry.getId()).orElseThrow();
-        assertThat(persisted.getOrgId()).isEqualTo(org.getId());
-        assertThat(persisted.getActorId()).isEqualTo(actor.getId());
+        assertThat(persisted.getOrganization().getId()).isEqualTo(org.getId());
+        assertThat(persisted.getActor().getId()).isEqualTo(actor.getId());
         assertThat(persisted.getTargetType()).isEqualTo("USER");
         assertThat(persisted.getTargetId()).isEqualTo(actor.getId());
         assertThat(persisted.getAction()).isEqualTo("USER_CREATED");

@@ -1,10 +1,14 @@
 package com.asms.service;
 
 import com.asms.domain.Membership;
+import com.asms.domain.Organization;
+import com.asms.domain.User;
 import com.asms.domain.enums.MembershipStatus;
 import com.asms.exception.AccessDeniedException;
 import com.asms.exception.ResourceNotFoundException;
 import com.asms.repository.MembershipRepository;
+import com.asms.repository.OrganizationRepository;
+import com.asms.repository.UserRepository;
 import com.asms.security.TenantContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +32,8 @@ import java.util.UUID;
 public class MembershipsService {
 
     private final MembershipRepository membershipRepository;
+    private final OrganizationRepository organizationRepository;
+    private final UserRepository userRepository;
     private final AuditService auditService;
 
     /**
@@ -35,7 +41,13 @@ public class MembershipsService {
      * {@link Membership} entity via the mapper before calling here.
      */
     @Transactional
-    public Membership createMembership(Membership membership) {
+    public Membership createMembership(Membership membership, UUID orgId, UUID userId) {
+        Organization org = organizationRepository.findById(orgId)
+                .orElseThrow(() -> new ResourceNotFoundException("Organization not found: " + orgId));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
+        membership.setOrganization(org);
+        membership.setUser(user);
         Membership saved = membershipRepository.save(membership);
         auditService.recordInfo("MEMBERSHIP", saved.getId(), "MEMBERSHIP_CREATED", null, saved);
         return saved;

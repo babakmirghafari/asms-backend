@@ -37,18 +37,10 @@ public class UsersService {
 
     @Transactional
     public User createUser(User user) {
-//        log.debug("Create user: {}", req.getUsername());
-//        User user = User.builder()
-//                .username(req.getUsername())
-//                .email(req.getEmail())
-//                .phoneNumber(req.getPhoneNumber())
-//                .status(UserStatus.INACTIVE)
-//                .forcePasswordChange(true)
-//                .mfaEnabled(false)
-//                .failedLoginAttempts(0)
-//                .createdAt(OffsetDateTime.now())
-//                .updatedAt(OffsetDateTime.now())
-//                .build();
+        OffsetDateTime now = OffsetDateTime.now();
+        if (user.getStatus() == null) user.setStatus(UserStatus.PENDING_ACTIVATION);
+        if (user.getCreatedAt() == null) user.setCreatedAt(now);
+        if (user.getUpdatedAt() == null) user.setUpdatedAt(now);
         User saved = userRepository.save(user);
         auditService.recordInfo("USER", saved.getId(), AuditActions.USER_CREATED, null, saved);
         return saved;

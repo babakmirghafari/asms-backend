@@ -4,6 +4,7 @@ import com.asms.domain.Organization;
 import com.asms.domain.Permission;
 import com.asms.domain.PermissionGroup;
 import com.asms.domain.User;
+import com.asms.domain.enums.OrganizationStatus;
 import com.asms.domain.enums.PermissionStatus;
 import com.asms.domain.enums.UserStatus;
 import com.asms.repository.OrganizationRepository;
@@ -57,7 +58,7 @@ class EffectivePermissionIntegrationTest extends BaseIntegrationTest {
         org = organizationRepository.save(Organization.builder()
                 .name("Test Org AC11")
                 .slug("test-org-ac11-" + System.nanoTime())
-                .status("ACTIVE")
+                .status(OrganizationStatus.ACTIVE)
                 .createdAt(OffsetDateTime.now())
                 .updatedAt(OffsetDateTime.now())
                 .build());
@@ -79,7 +80,7 @@ class EffectivePermissionIntegrationTest extends BaseIntegrationTest {
     void effectivePermissions_unionOfMultipleGroups() {
         // Given: two permissions and two groups
         Permission permA = permissionRepository.save(Permission.builder()
-                .orgId(org.getId())
+                .organization(org)
                 .name("perm:read")
                 .resource("documents")
                 .action("READ")
@@ -89,7 +90,7 @@ class EffectivePermissionIntegrationTest extends BaseIntegrationTest {
                 .build());
 
         Permission permB = permissionRepository.save(Permission.builder()
-                .orgId(org.getId())
+                .organization(org)
                 .name("perm:write")
                 .resource("documents")
                 .action("WRITE")
@@ -99,7 +100,7 @@ class EffectivePermissionIntegrationTest extends BaseIntegrationTest {
                 .build());
 
         PermissionGroup groupReaders = permissionGroupRepository.save(PermissionGroup.builder()
-                .orgId(org.getId())
+                .organization(org)
                 .name("Readers")
                 .sensitive(false)
                 .permissions(java.util.Set.of(permA))
@@ -109,7 +110,7 @@ class EffectivePermissionIntegrationTest extends BaseIntegrationTest {
                 .build());
 
         PermissionGroup groupWriters = permissionGroupRepository.save(PermissionGroup.builder()
-                .orgId(org.getId())
+                .organization(org)
                 .name("Writers")
                 .sensitive(false)
                 .permissions(java.util.Set.of(permB))
@@ -136,7 +137,7 @@ class EffectivePermissionIntegrationTest extends BaseIntegrationTest {
     void effectivePermissions_deduplicatesPermissionAcrossGroups_andFlagsConflict() {
         // Given: one permission in two groups, user is member of both
         Permission sharedPerm = permissionRepository.save(Permission.builder()
-                .orgId(org.getId())
+                .organization(org)
                 .name("perm:admin")
                 .resource("system")
                 .action("ADMIN")
@@ -146,7 +147,7 @@ class EffectivePermissionIntegrationTest extends BaseIntegrationTest {
                 .build());
 
         PermissionGroup groupA = permissionGroupRepository.save(PermissionGroup.builder()
-                .orgId(org.getId())
+                .organization(org)
                 .name("GroupA")
                 .sensitive(false)
                 .permissions(java.util.Set.of(sharedPerm))
@@ -156,7 +157,7 @@ class EffectivePermissionIntegrationTest extends BaseIntegrationTest {
                 .build());
 
         PermissionGroup groupB = permissionGroupRepository.save(PermissionGroup.builder()
-                .orgId(org.getId())
+                .organization(org)
                 .name("GroupB")
                 .sensitive(false)
                 .permissions(java.util.Set.of(sharedPerm))
@@ -196,7 +197,7 @@ class EffectivePermissionIntegrationTest extends BaseIntegrationTest {
     @DisplayName("AC-11: INACTIVE permissions are excluded from effective set")
     void effectivePermissions_inactivePermissionsExcluded() {
         Permission activePerm = permissionRepository.save(Permission.builder()
-                .orgId(org.getId())
+                .organization(org)
                 .name("perm:active")
                 .resource("resource")
                 .action("READ")
@@ -206,7 +207,7 @@ class EffectivePermissionIntegrationTest extends BaseIntegrationTest {
                 .build());
 
         Permission deprecatedPerm = permissionRepository.save(Permission.builder()
-                .orgId(org.getId())
+                .organization(org)
                 .name("perm:deprecated")
                 .resource("resource")
                 .action("DELETE")
@@ -216,7 +217,7 @@ class EffectivePermissionIntegrationTest extends BaseIntegrationTest {
                 .build());
 
         permissionGroupRepository.save(PermissionGroup.builder()
-                .orgId(org.getId())
+                .organization(org)
                 .name("MixedGroup")
                 .sensitive(false)
                 .permissions(java.util.Set.of(activePerm, deprecatedPerm))

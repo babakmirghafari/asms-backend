@@ -1,16 +1,13 @@
 package com.asms.handler;
 
 import com.asms.api.PermissionGroupsApiDelegate;
-import com.asms.domain.Organization;
 import com.asms.domain.PermissionGroup;
-import com.asms.exception.ResourceNotFoundException;
 import com.asms.mapper.PermissionGroupMapper;
 import com.asms.model.AddPermissionGroupMembersRequestDto;
 import com.asms.model.CreatePermissionGroupRequestDto;
 import com.asms.model.PagedResponseDto;
 import com.asms.model.PermissionGroupDto;
 import com.asms.model.UpdatePermissionGroupRequestDto;
-import com.asms.repository.OrganizationRepository;
 import com.asms.security.TenantContext;
 import com.asms.service.PermissionGroupsService;
 import com.asms.util.PageResponseBuilder;
@@ -37,7 +34,6 @@ public class PermissionGroupsHandler implements PermissionGroupsApiDelegate {
 
     private final PermissionGroupsService permissionGroupsService;
     private final PermissionGroupMapper permissionGroupMapper;
-    private final OrganizationRepository organizationRepository;
 
     @Override
     public ResponseEntity<PermissionGroupDto> addPermissionGroupMembers(
@@ -57,10 +53,7 @@ public class PermissionGroupsHandler implements PermissionGroupsApiDelegate {
         UUID orgId = createPermissionGroupRequestDto.getOrganizationId() != null
                 ? createPermissionGroupRequestDto.getOrganizationId()
                 : TenantContext.getRequiredOrgId();
-        Organization org = organizationRepository.findById(orgId)
-                .orElseThrow(() -> new ResourceNotFoundException("Organization not found: " + orgId));
-        entity.setOrganization(org);
-        PermissionGroup group = permissionGroupsService.createPermissionGroup(entity);
+        PermissionGroup group = permissionGroupsService.createPermissionGroup(entity, orgId);
         return ResponseEntity.status(201).body(permissionGroupMapper.toDto(group));
     }
 

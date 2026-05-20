@@ -1,7 +1,7 @@
 package com.asms.repository;
 
 import com.asms.domain.PermissionImport;
-import com.asms.domain.PermissionImportStatus;
+import com.asms.domain.enums.PermissionImportStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -41,9 +41,9 @@ public interface PermissionImportRepository extends JpaRepository<PermissionImpo
     @Transactional
     @Query("""
             UPDATE PermissionImport pi
-            SET pi.status = com.asms.domain.PermissionImportStatus.EXPIRED,
+            SET pi.status = com.asms.domain.enums.PermissionImportStatus.EXPIRED,
                 pi.updatedAt = :now
-            WHERE pi.status = com.asms.domain.PermissionImportStatus.PENDING_COMMIT
+            WHERE pi.status = com.asms.domain.enums.PermissionImportStatus.PENDING_COMMIT
               AND pi.expiresAt < :now
             """)
     int expireStaleSessions(@Param("now") OffsetDateTime now);

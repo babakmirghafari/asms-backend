@@ -1,10 +1,12 @@
 package com.asms.service;
 
 import com.asms.domain.Application;
+import com.asms.domain.Organization;
 import com.asms.exception.ResourceNotFoundException;
 import com.asms.domain.enums.ApplicationStatus;
 import com.asms.domain.enums.ConnectorType;
 import com.asms.repository.ApplicationRepository;
+import com.asms.repository.OrganizationRepository;
 import com.asms.security.TenantContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +27,7 @@ import java.util.UUID;
 public class ApplicationsService {
 
     private final ApplicationRepository applicationRepository;
+    private final OrganizationRepository organizationRepository;
     private final AuditService auditService;
 
     /**
@@ -38,7 +41,10 @@ public class ApplicationsService {
      * {@link Application} entity via the mapper before calling here.
      */
     @Transactional
-    public Application createApplication(Application app) {
+    public Application createApplication(Application app, UUID orgId) {
+        Organization org = organizationRepository.findById(orgId)
+                .orElseThrow(() -> new ResourceNotFoundException("Organization not found: " + orgId));
+        app.setOrganization(org);
         Application saved = applicationRepository.save(app);
         auditService.recordInfo("APPLICATION", saved.getId(), "APPLICATION_CREATED", null, saved);
         return saved;

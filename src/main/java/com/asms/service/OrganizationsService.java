@@ -34,8 +34,14 @@ public class OrganizationsService {
      * {@link Organization} entity via the mapper before calling here.
      */
     @Transactional
-    public Organization createOrganization(Organization org) {
+    public Organization createOrganization(Organization org, UUID parentOrgId) {
         log.debug("Create organization: {}", org.getName());
+        if (parentOrgId != null) {
+            Organization parent = organizationRepository.findById(parentOrgId)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Parent organization not found: " + parentOrgId));
+            org.setParentOrganization(parent);
+        }
         Organization saved = organizationRepository.save(org);
         auditService.recordInfo("ORGANIZATION", saved.getId(), "ORGANIZATION_CREATED", null, saved);
         return saved;

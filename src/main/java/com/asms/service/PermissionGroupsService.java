@@ -1,8 +1,10 @@
 package com.asms.service;
 
+import com.asms.domain.Organization;
 import com.asms.domain.PermissionGroup;
 import com.asms.domain.User;
 import com.asms.exception.ResourceNotFoundException;
+import com.asms.repository.OrganizationRepository;
 import com.asms.repository.PermissionGroupRepository;
 import com.asms.repository.UserRepository;
 import com.asms.security.TenantContext;
@@ -33,6 +35,7 @@ import java.util.UUID;
 public class PermissionGroupsService {
 
     private final PermissionGroupRepository permissionGroupRepository;
+    private final OrganizationRepository organizationRepository;
     private final UserRepository userRepository;
     private final AuditService auditService;
 
@@ -64,7 +67,10 @@ public class PermissionGroupsService {
      * {@link PermissionGroup} entity via the mapper before calling here.
      */
     @Transactional
-    public PermissionGroup createPermissionGroup(PermissionGroup group) {
+    public PermissionGroup createPermissionGroup(PermissionGroup group, UUID orgId) {
+        Organization org = organizationRepository.findById(orgId)
+                .orElseThrow(() -> new ResourceNotFoundException("Organization not found: " + orgId));
+        group.setOrganization(org);
         PermissionGroup saved = permissionGroupRepository.save(group);
         auditService.recordInfo("PERMISSION_GROUP", saved.getId(),
                 "PERMISSION_GROUP_CREATED", null, saved);

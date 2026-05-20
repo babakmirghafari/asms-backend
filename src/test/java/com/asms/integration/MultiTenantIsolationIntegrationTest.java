@@ -6,6 +6,7 @@ import com.asms.domain.Permission;
 import com.asms.domain.User;
 import com.asms.domain.enums.AuditSeverity;
 import com.asms.domain.enums.MembershipStatus;
+import com.asms.domain.enums.OrganizationStatus;
 import com.asms.domain.enums.PermissionStatus;
 import com.asms.domain.enums.UserRole;
 import com.asms.domain.enums.UserStatus;
@@ -75,7 +76,7 @@ class MultiTenantIsolationIntegrationTest extends BaseIntegrationTest {
         orgA = organizationRepository.save(Organization.builder()
                 .name("Org A AC13")
                 .slug("org-a-ac13-" + nonce)
-                .status("ACTIVE")
+                .status(OrganizationStatus.ACTIVE)
                 .createdAt(OffsetDateTime.now())
                 .updatedAt(OffsetDateTime.now())
                 .build());
@@ -83,7 +84,7 @@ class MultiTenantIsolationIntegrationTest extends BaseIntegrationTest {
         orgB = organizationRepository.save(Organization.builder()
                 .name("Org B AC13")
                 .slug("org-b-ac13-" + nonce)
-                .status("ACTIVE")
+                .status(OrganizationStatus.ACTIVE)
                 .createdAt(OffsetDateTime.now())
                 .updatedAt(OffsetDateTime.now())
                 .build());
@@ -112,8 +113,8 @@ class MultiTenantIsolationIntegrationTest extends BaseIntegrationTest {
 
         // Assign userInOrgA to orgA only
         membershipRepository.save(Membership.builder()
-                .userId(userInOrgA.getId())
-                .orgId(orgA.getId())
+                .user(userInOrgA)
+                .organization(orgA)
                 .role(UserRole.MEMBER)
                 .status(MembershipStatus.ACTIVE)
                 .createdAt(OffsetDateTime.now())
@@ -122,8 +123,8 @@ class MultiTenantIsolationIntegrationTest extends BaseIntegrationTest {
 
         // Assign userInOrgB to orgB only
         membershipRepository.save(Membership.builder()
-                .userId(userInOrgB.getId())
-                .orgId(orgB.getId())
+                .user(userInOrgB)
+                .organization(orgB)
                 .role(UserRole.MEMBER)
                 .status(MembershipStatus.ACTIVE)
                 .createdAt(OffsetDateTime.now())
@@ -166,7 +167,7 @@ class MultiTenantIsolationIntegrationTest extends BaseIntegrationTest {
     void permissionQuery_orgScopedByOrgId_doesNotCrossOrgs() {
         // Create a permission in orgA
         Permission orgAPermission = permissionRepository.save(Permission.builder()
-                .orgId(orgA.getId())
+                .organization(orgA)
                 .name("orga:only:perm")
                 .resource("documents")
                 .action("READ")
@@ -176,12 +177,12 @@ class MultiTenantIsolationIntegrationTest extends BaseIntegrationTest {
                 .build());
 
         // Query permissions for orgA — must return the permission
-        Page<Permission> orgAResults = permissionRepository.findByOrgId(
+        Page<Permission> orgAResults = permissionRepository.findByOrganizationId(
                 orgA.getId(), PageRequest.of(0, 20));
         assertThat(orgAResults.getContent()).anyMatch(p -> p.getId().equals(orgAPermission.getId()));
 
         // Query permissions for orgB — must not return orgA's permission
-        Page<Permission> orgBResults = permissionRepository.findByOrgId(
+        Page<Permission> orgBResults = permissionRepository.findByOrganizationId(
                 orgB.getId(), PageRequest.of(0, 20));
         assertThat(orgBResults.getContent()).noneMatch(p -> p.getId().equals(orgAPermission.getId()));
     }
@@ -201,7 +202,7 @@ class MultiTenantIsolationIntegrationTest extends BaseIntegrationTest {
     @DisplayName("AC-13: direct permission fetch with wrong org_id returns empty")
     void permissionFetch_wrongOrgId_returnsEmpty() {
         Permission orgAPermission = permissionRepository.save(Permission.builder()
-                .orgId(orgA.getId())
+                .organization(orgA)
                 .name("orga:secret:perm")
                 .resource("secrets")
                 .action("READ")
@@ -211,7 +212,7 @@ class MultiTenantIsolationIntegrationTest extends BaseIntegrationTest {
                 .build());
 
         // Fetching with orgB's ID should return empty — isolation enforced at repository level
-        assertThat(permissionRepository.findByOrgIdAndId(orgB.getId(), orgAPermission.getId()))
+        assertThat(permissionRepository.findByOrganizationIdAndId(orgB.getId(), orgAPermission.getId()))
                 .isEmpty();
     }
 
@@ -220,8 +221,8 @@ class MultiTenantIsolationIntegrationTest extends BaseIntegrationTest {
     void auditLogQuery_orgScoped_doesNotCrossOrgs() {
         // Insert audit logs directly for orgA and orgB
         com.asms.domain.AuditLog orgALog = auditLogRepository.save(com.asms.domain.AuditLog.builder()
-                .orgId(orgA.getId())
-                .actorId(userInOrgA.getId())
+                .organization(orgA)
+                .actor(userInOrgA)
                 .actorUsername(userInOrgA.getUsername())
                 .targetType("USER")
                 .action("USER_CREATED")
@@ -232,8 +233,8 @@ class MultiTenantIsolationIntegrationTest extends BaseIntegrationTest {
                 .build());
 
         com.asms.domain.AuditLog orgBLog = auditLogRepository.save(com.asms.domain.AuditLog.builder()
-                .orgId(orgB.getId())
-                .actorId(userInOrgB.getId())
+                .organization(orgB)
+                .actor(userInOrgB)
                 .actorUsername(userInOrgB.getUsername())
                 .targetType("USER")
                 .action("USER_CREATED")

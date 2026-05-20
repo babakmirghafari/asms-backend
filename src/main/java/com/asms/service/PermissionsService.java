@@ -79,9 +79,12 @@ public class PermissionsService {
      * not a presentation concern.
      */
     @Transactional
-    public Permission createPermission(Permission perm) {
-        log.debug("Create permission: {} in org: {}", perm.getName(),
-                perm.getOrganization() != null ? perm.getOrganization().getId() : null);
+    public Permission createPermission(Permission perm, UUID orgId) {
+        Organization org = organizationRepository.findById(orgId)
+                .orElseThrow(() -> new ResourceNotFoundException("Organization not found: " + orgId));
+        perm.setOrganization(org);
+
+        log.debug("Create permission: {} in org: {}", perm.getName(), orgId);
 
         if (!perm.getName().matches(NAMING_PATTERN)) {
             throw new ValidationException("INVALID_PERMISSION_NAME",

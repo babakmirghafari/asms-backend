@@ -1,6 +1,9 @@
 # Test profile — used by Testcontainers integration tests
 # Never use H2 — always real PostgreSQL via Testcontainers
 spring:
+  datasource:
+    hikari:
+      connection-init-sql: "SET search_path TO asms, public"
   jpa:
     show-sql: false
     hibernate:

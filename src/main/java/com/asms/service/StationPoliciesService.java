@@ -1,7 +1,9 @@
 package com.asms.service;
 
+import com.asms.domain.Organization;
 import com.asms.domain.StationPolicy;
 import com.asms.exception.ResourceNotFoundException;
+import com.asms.repository.OrganizationRepository;
 import com.asms.repository.StationPolicyRepository;
 import com.asms.security.TenantContext;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +27,7 @@ import java.util.UUID;
 public class StationPoliciesService {
 
     private final StationPolicyRepository stationPolicyRepository;
+    private final OrganizationRepository organizationRepository;
     private final AuditService auditService;
 
     /**
@@ -32,7 +35,10 @@ public class StationPoliciesService {
      * {@link StationPolicy} entity via the mapper before calling here.
      */
     @Transactional
-    public StationPolicy createStationPolicy(StationPolicy policy) {
+    public StationPolicy createStationPolicy(StationPolicy policy, UUID orgId) {
+        Organization org = organizationRepository.findById(orgId)
+                .orElseThrow(() -> new ResourceNotFoundException("Organization not found: " + orgId));
+        policy.setOrganization(org);
         StationPolicy saved = stationPolicyRepository.save(policy);
         auditService.recordInfo("STATION_POLICY", saved.getId(), "STATION_POLICY_CREATED", null, saved);
         return saved;

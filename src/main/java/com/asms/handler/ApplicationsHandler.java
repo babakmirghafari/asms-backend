@@ -2,16 +2,13 @@ package com.asms.handler;
 
 import com.asms.api.ApplicationsApiDelegate;
 import com.asms.domain.Application;
-import com.asms.domain.Organization;
 import com.asms.domain.enums.ConnectorType;
-import com.asms.exception.ResourceNotFoundException;
 import com.asms.mapper.ApplicationMapper;
 import com.asms.model.ApplicationCredentialDto;
 import com.asms.model.ApplicationDto;
 import com.asms.model.CreateApplicationRequestDto;
 import com.asms.model.PagedResponseDto;
 import com.asms.model.UpdateApplicationRequestDto;
-import com.asms.repository.OrganizationRepository;
 import com.asms.security.TenantContext;
 import com.asms.service.ApplicationsService;
 import com.asms.service.ApplicationsService.RotateSecretResult;
@@ -39,7 +36,6 @@ public class ApplicationsHandler implements ApplicationsApiDelegate {
 
     private final ApplicationsService applicationsService;
     private final ApplicationMapper applicationMapper;
-    private final OrganizationRepository organizationRepository;
 
     @Override
     public ResponseEntity<ApplicationDto> createApplication(
@@ -48,10 +44,7 @@ public class ApplicationsHandler implements ApplicationsApiDelegate {
         UUID orgId = createApplicationRequestDto.getOrganizationId() != null
                 ? createApplicationRequestDto.getOrganizationId()
                 : TenantContext.getRequiredOrgId();
-        Organization org = organizationRepository.findById(orgId)
-                .orElseThrow(() -> new ResourceNotFoundException("Organization not found: " + orgId));
-        entity.setOrganization(org);
-        Application app = applicationsService.createApplication(entity);
+        Application app = applicationsService.createApplication(entity, orgId);
         return ResponseEntity.status(201).body(applicationMapper.toDto(app));
     }
 
