@@ -1,6 +1,7 @@
 package com.asms.mapper;
 
 import com.asms.domain.User;
+import com.asms.domain.enums.Department;
 import com.asms.domain.enums.UserStatus;
 import com.asms.model.CreateUserRequestDto;
 import com.asms.model.UpdateUserRequestDto;
@@ -41,7 +42,7 @@ public interface UserMapper {
                 .fullName(dto.getFullName())
                 .email(dto.getEmail())
                 .phoneNumber(dto.getPhoneNumber())
-                .department(dto.getDepartment())
+                .department(dto.getDepartment() != null ? Department.valueOf(dto.getDepartment()) : null)
                 .build();
     }
 

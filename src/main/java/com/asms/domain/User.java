@@ -65,7 +65,8 @@ public class User {
 
     @Column(name = "delivery_method", nullable = false)
     @Convert(converter = DeliveryMethodConverter.class)
-    private DeliveryMethod deliveryMethod;
+    @Builder.Default
+    private DeliveryMethod deliveryMethod = DeliveryMethod.Email;
 
     @Column(name = "password_hash")
     private String passwordHash;
