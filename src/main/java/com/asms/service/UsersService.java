@@ -1,12 +1,20 @@
 package com.asms.service;
 
 import com.asms.constant.AuditActions;
+import com.asms.domain.Membership;
+import com.asms.domain.Organization;
 import com.asms.domain.Permission;
 import com.asms.domain.PermissionGroup;
 import com.asms.domain.User;
+import com.asms.domain.enums.DeliveryMethod;
+import com.asms.domain.enums.Department;
 import com.asms.domain.enums.MembershipStatus;
+import com.asms.domain.enums.UserRole;
 import com.asms.domain.enums.UserStatus;
 import com.asms.exception.ResourceNotFoundException;
+import com.asms.model.CreateUserRequestDto;
+import com.asms.repository.MembershipRepository;
+import com.asms.repository.OrganizationRepository;
 import com.asms.repository.PermissionGroupRepository;
 import com.asms.repository.PermissionRepository;
 import com.asms.repository.UserRepository;
@@ -20,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -38,17 +47,70 @@ import java.util.UUID;
 public class UsersService {
 
     private final UserRepository userRepository;
+    private final MembershipRepository membershipRepository;
+    private final OrganizationRepository organizationRepository;
     private final PermissionGroupRepository permissionGroupRepository;
     private final PermissionRepository permissionRepository;
     private final AuditService auditService;
 
+    /**
+     * Creates a new user from the incoming request DTO.
+     *
+     * <p>Owns the full creation flow:
+     * <ol>
+     *   <li>Maps base fields from the DTO and sets lifecycle defaults.</li>
+     *   <li>Persists the user row.</li>
+     *   <li>Creates one {@link Membership} per entry in {@code dto.getOrganizationIds()}
+     *       (role = MEMBER, status = ACTIVE). Orgs that cannot be found are skipped with
+     *       a warning — partial success is preferred over a full rollback on a bad UUID.</li>
+     *   <li>Records an audit event.</li>
+     * </ol>
+     *
+     * @param dto the contract-generated create-user request
+     * @return the persisted {@link User}
+     */
     @Transactional
-    public User createUser(User user) {
+    public User createUser(CreateUserRequestDto dto) {
         OffsetDateTime now = OffsetDateTime.now();
-        if (user.getStatus() == null) user.setStatus(UserStatus.PENDING_ACTIVATION);
-        if (user.getCreatedAt() == null) user.setCreatedAt(now);
-        if (user.getUpdatedAt() == null) user.setUpdatedAt(now);
+
+        DeliveryMethod deliveryMethod = Boolean.TRUE.equals(dto.getSendTempPassword())
+                ? DeliveryMethod.Email
+                : DeliveryMethod.Manuel_Copy;
+
+        User user = User.builder()
+                .username(dto.getUsername())
+                .fullName(dto.getFullName())
+                .email(dto.getEmail())
+                .phoneNumber(dto.getPhoneNumber())
+                .department(dto.getDepartment() != null ? Department.valueOf(dto.getDepartment()) : null)
+                .deliveryMethod(deliveryMethod)
+                .status(UserStatus.PENDING_ACTIVATION)
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+
         User saved = userRepository.save(user);
+
+        List<UUID> orgIds = dto.getOrganizationIds();
+        if (orgIds != null && !orgIds.isEmpty()) {
+            for (UUID orgId : orgIds) {
+                Organization org = organizationRepository.findById(orgId).orElse(null);
+                if (org == null) {
+                    log.warn("createUser: organization {} not found — skipping membership for user {}",
+                            orgId, saved.getId());
+                    continue;
+                }
+                membershipRepository.save(Membership.builder()
+                        .user(saved)
+                        .organization(org)
+                        .role(UserRole.MEMBER)
+                        .status(MembershipStatus.ACTIVE)
+                        .createdAt(now)
+                        .updatedAt(now)
+                        .build());
+            }
+        }
+
         auditService.recordInfo("USER", saved.getId(), AuditActions.USER_CREATED, null, saved);
         return saved;
     }

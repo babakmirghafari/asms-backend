@@ -40,8 +40,7 @@ public class UsersHandler implements UsersApiDelegate {
 
     @Override
     public ResponseEntity<UserDto> createUser(CreateUserRequestDto createUserRequestDto) {
-        User user = userMapper.toUserEntityFromCreateUserRequestDto(createUserRequestDto);
-        usersService.createUser(user);
+        User user = usersService.createUser(createUserRequestDto);
         return ResponseEntity.status(201).body(userMapper.toDto(user));
     }
 
