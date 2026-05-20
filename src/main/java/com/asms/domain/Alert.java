@@ -42,18 +42,12 @@ public class Alert {
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
-    @Column(name = "org_id", nullable = false)
-    private UUID orgId;
-
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "org_id", insertable = false, updatable = false)
+    @JoinColumn(name = "org_id", nullable = false)
     private Organization organization;
 
-    @Column(name = "user_id")
-    private UUID userId;
-
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", insertable = false, updatable = false)
+    @JoinColumn(name = "user_id")
     private User user;
 
     @Column(name = "type", nullable = false)
@@ -77,6 +71,7 @@ public class Alert {
     @JdbcTypeCode(SqlTypes.JSON)
     private String metadata;
 
+    // Forensic UUIDs — no FK constraint in DDL, kept as plain UUID
     @Column(name = "acknowledged_by")
     private UUID acknowledgedBy;
 

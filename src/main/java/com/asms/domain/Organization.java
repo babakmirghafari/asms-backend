@@ -46,15 +46,9 @@ public class Organization {
     @Column(name = "display_name")
     private String displayName;
 
-    @Column(name = "parent_org_id")
-    private UUID parentOrgId;
-
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "parent_org_id", insertable = false, updatable = false)
+    @JoinColumn(name = "parent_org_id")
     private Organization parentOrganization;
-
-    @OneToMany(mappedBy = "organization", fetch = FetchType.LAZY)
-    private List<Membership> memberships;
 
     @Column(name = "data_residency")
     private String dataResidency;
@@ -74,4 +68,7 @@ public class Organization {
 
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
+
+    @OneToMany(mappedBy = "organization", fetch = FetchType.LAZY)
+    private List<Membership> memberships;
 }

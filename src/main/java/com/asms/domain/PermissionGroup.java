@@ -36,11 +36,8 @@ public class PermissionGroup {
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
-    @Column(name = "org_id", nullable = false)
-    private UUID orgId;
-
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "org_id", insertable = false, updatable = false)
+    @JoinColumn(name = "org_id", nullable = false)
     private Organization organization;
 
     @Column(name = "name", nullable = false)
@@ -52,7 +49,7 @@ public class PermissionGroup {
     @Column(name = "is_sensitive", nullable = false)
     private boolean sensitive;
 
-    @ManyToMany
+    @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
         name = "permission_group_permissions",
         joinColumns = @JoinColumn(name = "group_id"),
@@ -61,7 +58,7 @@ public class PermissionGroup {
     @Builder.Default
     private Set<Permission> permissions = new HashSet<>();
 
-    @ManyToMany
+    @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
         name = "permission_group_members",
         joinColumns = @JoinColumn(name = "group_id"),

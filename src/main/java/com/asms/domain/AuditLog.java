@@ -42,18 +42,12 @@ public class AuditLog {
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
-    @Column(name = "org_id", nullable = false)
-    private UUID orgId;
-
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "org_id", insertable = false, updatable = false)
+    @JoinColumn(name = "org_id", nullable = false)
     private Organization organization;
 
-    @Column(name = "actor_id")
-    private UUID actorId;
-
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "actor_id", insertable = false, updatable = false)
+    @JoinColumn(name = "actor_id")
     private User actor;
 
     @Column(name = "actor_username")
@@ -62,6 +56,7 @@ public class AuditLog {
     @Column(name = "target_type", nullable = false)
     private String targetType;
 
+    // Forensic UUID — no FK constraint in DDL
     @Column(name = "target_id")
     private UUID targetId;
 
@@ -83,6 +78,7 @@ public class AuditLog {
     @Column(name = "ip_address")
     private String ipAddress;
 
+    // Forensic UUID — no FK constraint in DDL
     @Column(name = "session_id")
     private UUID sessionId;
 

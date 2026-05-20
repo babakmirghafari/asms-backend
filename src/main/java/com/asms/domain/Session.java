@@ -35,18 +35,12 @@ public class Session {
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
-    @Column(name = "user_id", nullable = false)
-    private UUID userId;
-
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", insertable = false, updatable = false)
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(name = "org_id", nullable = false)
-    private UUID orgId;
-
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "org_id", insertable = false, updatable = false)
+    @JoinColumn(name = "org_id", nullable = false)
     private Organization organization;
 
     @Column(name = "token_hash", nullable = false, unique = true)

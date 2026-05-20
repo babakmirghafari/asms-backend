@@ -32,11 +32,8 @@ public class AuthPolicy {
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
-    @Column(name = "org_id", nullable = false, unique = true)
-    private UUID orgId;
-
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "org_id", insertable = false, updatable = false)
+    @JoinColumn(name = "org_id", nullable = false, unique = true)
     private Organization organization;
 
     @Column(name = "max_failed_attempts", nullable = false)

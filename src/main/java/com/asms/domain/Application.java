@@ -42,11 +42,8 @@ public class Application {
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
-    @Column(name = "org_id", nullable = false)
-    private UUID orgId;
-
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "org_id", insertable = false, updatable = false)
+    @JoinColumn(name = "org_id", nullable = false)
     private Organization organization;
 
     @Column(name = "name", nullable = false)

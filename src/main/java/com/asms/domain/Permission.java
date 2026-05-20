@@ -38,11 +38,8 @@ public class Permission {
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
-    @Column(name = "org_id", nullable = false)
-    private UUID orgId;
-
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "org_id", insertable = false, updatable = false)
+    @JoinColumn(name = "org_id", nullable = false)
     private Organization organization;
 
     @Column(name = "name", nullable = false)
@@ -67,7 +64,6 @@ public class Permission {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
-    /** Back-reference used only for JPQL queries in PermissionRepository. */
     @ManyToMany(mappedBy = "permissions")
     @Builder.Default
     private Set<PermissionGroup> permissionGroups = new HashSet<>();
