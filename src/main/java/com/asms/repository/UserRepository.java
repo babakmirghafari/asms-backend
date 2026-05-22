@@ -30,10 +30,13 @@ public interface UserRepository extends JpaRepository<User, UUID> {
      * Uses a native query to avoid Hibernate 6 type-inference issues with
      * null CONCAT parameters on PostgreSQL (lower(bytea) error).
      * Enum keys are passed as integers because native SQL bypasses the JPA converter.
+     *
+     * @param statusKey optional status filter — pass {@code null} to include all non-deleted statuses
      */
     @Query(value = """
             SELECT u.* FROM users u
             WHERE u.status != :deletedKey
+              AND (:statusKey IS NULL OR u.status = :statusKey)
               AND EXISTS (
                   SELECT 1 FROM memberships m
                   WHERE m.user_id = u.id
@@ -48,6 +51,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
             countQuery = """
             SELECT COUNT(*) FROM users u
             WHERE u.status != :deletedKey
+              AND (:statusKey IS NULL OR u.status = :statusKey)
               AND EXISTS (
                   SELECT 1 FROM memberships m
                   WHERE m.user_id = u.id
@@ -62,6 +66,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
             nativeQuery = true)
     Page<User> findAllByOrgId(@Param("orgId") UUID orgId,
                                @Param("search") String search,
+                               @Param("statusKey") Integer statusKey,
                                @Param("deletedKey") int deletedKey,
                                @Param("activeKey") int activeKey,
                                Pageable pageable);

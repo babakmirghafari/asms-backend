@@ -76,7 +76,7 @@ public class GlobalExceptionHandler {
         log.debug("Authentication failure [{}]: {}", ex.getErrorCode(), ex.getMessage());
         ErrorResponseDto error = new ErrorResponseDto()
             .code(ex.getErrorCode())
-            .message("Authentication failed")
+            .message(ex.getMessage())
             .timestamp(OffsetDateTime.now());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
     }

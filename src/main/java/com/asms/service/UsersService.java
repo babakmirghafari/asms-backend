@@ -132,11 +132,19 @@ public class UsersService {
 
     @Transactional(readOnly = true)
     public Page<User> listUsers(
-            Integer page, Integer size, String sort, String search, UUID organizationId) {
+            Integer page, Integer size, String status, String search, UUID organizationId) {
         // AC-13: org scope — use param if provided, otherwise TenantContext
         UUID orgId = organizationId != null ? organizationId : TenantContext.getOrgId();
+        Integer statusKey = null;
+        if (status != null && !status.isBlank()) {
+            try {
+                statusKey = UserStatus.valueOf(status).getKey();
+            } catch (IllegalArgumentException e) {
+                log.warn("listUsers: unknown status filter '{}' — ignoring", status);
+            }
+        }
         return userRepository.findAllByOrgId(
-                orgId, search,
+                orgId, search, statusKey,
                 UserStatus.DELETED.getKey(), MembershipStatus.ACTIVE.getKey(),
                 PageRequest.of(page != null ? page : 0, size != null ? size : 20));
     }

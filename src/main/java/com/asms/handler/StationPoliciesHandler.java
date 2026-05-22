@@ -58,8 +58,8 @@ public class StationPoliciesHandler implements StationPoliciesApiDelegate {
 
     @Override
     public ResponseEntity<PagedResponseDto> listStationPolicies(
-            Integer page, Integer size, UUID userId) {
-        Page<StationPolicy> policies = stationPoliciesService.listStationPolicies(page, size, userId);
+            Integer page, Integer size, UUID organizationId) {
+        Page<StationPolicy> policies = stationPoliciesService.listStationPolicies(page, size, organizationId);
         List<StationPolicyDto> dtos = policies.getContent().stream().map(stationPolicyMapper::toDto).toList();
         return ResponseEntity.ok(PageResponseBuilder.build(dtos, policies));
     }

@@ -57,8 +57,8 @@ public class UsersHandler implements UsersApiDelegate {
 
     @Override
     public ResponseEntity<PagedResponseDto> listUsers(
-            Integer page, Integer size, String sort, String search, UUID organizationId) {
-        Page<User> users = usersService.listUsers(page, size, sort, search, organizationId);
+            Integer page, Integer size, String status, String search, UUID organizationId) {
+        Page<User> users = usersService.listUsers(page, size, status, search, organizationId);
         List<UserDto> dtos = users.getContent().stream().map(userMapper::toDto).toList();
         return ResponseEntity.ok(PageResponseBuilder.build(dtos, users));
     }

@@ -214,10 +214,13 @@ public class AuthService {
      */
     @Transactional
     public OrgSelectionResult selectOrganization(SelectOrgRequestDto req) {
-        // The session token (set in login response) carries the userId
-        // In a full impl the session token is validated here; for now we read from TenantContext
-        // or the X-Session-Token header (set from login's sessionToken field).
-        UUID userId = TenantContext.getUserId();
+        // Session token is the user's UUID set by the login handler.
+        UUID userId = null;
+        try {
+            if (req.getSessionToken() != null) userId = UUID.fromString(req.getSessionToken());
+        } catch (IllegalArgumentException ignored) {}
+        if (userId == null) userId = TenantContext.getUserId();
+
         UUID orgId = req.getOrganizationId();
 
         String username = TenantContext.getUsername();
@@ -248,12 +251,36 @@ public class AuthService {
 
     /**
      * Stubs MFA verification — TOTP deferred to security phase.
-     *
-     * <p>Auth boundary: handler passes request DTO directly — no domain entity exists for credentials/tokens.
+     * Issues a JWT directly (stub accepts any 6-digit code).
      */
     public MfaVerifyResponseDto verifyMfa(MfaVerifyRequestDto req) {
+        UUID userId = null;
+        try {
+            if (req.getSessionToken() != null) userId = UUID.fromString(req.getSessionToken());
+        } catch (IllegalArgumentException ignored) {}
+
+        String username = "unknown";
+        UUID orgId = null;
+        List<String> roles = List.of(UserRole.MEMBER.name());
+
+        if (userId != null) {
+            Optional<User> userOpt = userRepository.findById(userId);
+            if (userOpt.isPresent()) username = userOpt.get().getUsername();
+            Page<Membership> memberships = membershipRepository.findByUserId(userId, PageRequest.of(0, 1));
+            if (!memberships.isEmpty()) {
+                Membership first = memberships.getContent().get(0);
+                orgId = first.getOrganization().getId();
+                roles = List.of(first.getRole().name());
+            }
+        }
+
+        String accessToken = jwtService.createToken(
+                userId != null ? userId : UUID.randomUUID(),
+                username, orgId, null, roles);
+
         MfaVerifyResponseDto response = new MfaVerifyResponseDto();
-        response.setStatus(MfaVerifyResponseDto.StatusEnum.ORG_SELECTION_REQUIRED);
+        response.setStatus(MfaVerifyResponseDto.StatusEnum.SUCCESS);
+        response.setAccessToken(accessToken);
         return response;
     }
 

@@ -26,7 +26,9 @@ public interface UserMapper {
     @Mapping(target = "updatedBy", ignore = true)
     UserDto toDto(User user);
 
-    @ValueMapping(source = "PENDING_ACTIVATION", target = MappingConstants.NULL)
+    // PENDING_ACTIVATION is a server-side pre-activation state — exposed as TEMP_PASSWORD to the UI
+    // DELETED users are filtered out before mapping, but a null fallback avoids NPE in edge cases
+    @ValueMapping(source = "PENDING_ACTIVATION", target = "TEMP_PASSWORD")
     @ValueMapping(source = "DELETED", target = MappingConstants.NULL)
     UserDto.StatusEnum toStatusEnum(UserStatus status);
 
