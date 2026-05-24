@@ -80,9 +80,9 @@ public class PermissionsHandler implements PermissionsApiDelegate {
 
     @Override
     public ResponseEntity<PagedResponseDto> listPermissions(
-            Integer page, Integer size, UUID organizationId, String status) {
+            Integer page, Integer size, UUID organizationId, List<UUID> organizationIds, String status) {
         Page<Permission> permissions =
-                permissionsService.listPermissions(page, size, organizationId, status);
+                permissionsService.listPermissions(page, size, organizationId, organizationIds, status);
         List<PermissionDto> dtos = permissions.getContent().stream()
                 .map(permissionMapper::toDto).toList();
         return ResponseEntity.ok(PageResponseBuilder.build(dtos, permissions));

@@ -1,14 +1,19 @@
 package com.asms.mapper;
 
+import com.asms.domain.Permission;
 import com.asms.domain.User;
 import com.asms.domain.enums.Department;
 import com.asms.domain.enums.UserStatus;
 import com.asms.model.CreateUserRequestDto;
 import com.asms.model.UpdateUserRequestDto;
 import com.asms.model.UserDto;
+import com.asms.model.UserDtoDirectPermissionsInner;
+import org.hibernate.Hibernate;
 import org.mapstruct.*;
 
+import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -16,7 +21,6 @@ import java.util.stream.Stream;
 public interface UserMapper {
 
     @Mapping(target = "status", source = "status")
-    @Mapping(target = "password", ignore = true)
     @Mapping(target = "displayName", ignore = true)
     @Mapping(target = "organizationIds", ignore = true)
     @Mapping(target = "workdays", ignore = true)
@@ -24,7 +28,31 @@ public interface UserMapper {
     @Mapping(target = "workHours", ignore = true)
     @Mapping(target = "createdBy", ignore = true)
     @Mapping(target = "updatedBy", ignore = true)
+    @Mapping(target = "directPermissions", ignore = true)
     UserDto toDto(User user);
+
+    @AfterMapping
+    default void fillDirectPermissions(User user, @MappingTarget UserDto dto) {
+        if (!Hibernate.isInitialized(user.getDirectPermissions())) return;
+        List<UserDtoDirectPermissionsInner> items = user.getDirectPermissions().stream()
+                .map(p -> {
+                    UserDtoDirectPermissionsInner inner = new UserDtoDirectPermissionsInner();
+                    inner.setId(p.getId());
+                    inner.setName(p.getName());
+                    inner.setResource(p.getResource());
+                    if (p.getAction() != null) {
+                        try {
+                            inner.setAction(UserDtoDirectPermissionsInner.ActionEnum.fromValue(p.getAction()));
+                        } catch (IllegalArgumentException ignored) { }
+                    }
+                    if (p.getOrganization() != null) {
+                        inner.setOrganizationId(p.getOrganization().getId());
+                    }
+                    return inner;
+                })
+                .toList();
+        dto.setDirectPermissions(items);
+    }
 
     // PENDING_ACTIVATION is a server-side pre-activation state — exposed as TEMP_PASSWORD to the UI
     // DELETED users are filtered out before mapping, but a null fallback avoids NPE in edge cases

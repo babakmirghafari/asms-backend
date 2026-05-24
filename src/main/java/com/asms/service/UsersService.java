@@ -31,6 +31,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * User lifecycle management service (AC-3, AC-12, AC-13).
@@ -109,6 +110,25 @@ public class UsersService {
                         .updatedAt(now)
                         .build());
             }
+        }
+
+        List<UUID> directPermIds = dto.getDirectPermissionIds();
+        if (directPermIds != null && !directPermIds.isEmpty()) {
+            User withPerms = loadUserWithPermissions(saved.getId());
+            Set<UUID> orgIdSet = orgIds != null ? new HashSet<>(orgIds) : Set.of();
+            for (UUID permId : directPermIds) {
+                permissionRepository.findById(permId).ifPresentOrElse(perm -> {
+                    UUID permOrgId = perm.getOrganization() != null ? perm.getOrganization().getId() : null;
+                    if (!orgIdSet.isEmpty() && (permOrgId == null || !orgIdSet.contains(permOrgId))) {
+                        log.warn("createUser: permission {} does not belong to any of the user's orgs — skipping",
+                                permId);
+                    } else {
+                        withPerms.getDirectPermissions().add(perm);
+                    }
+                }, () -> log.warn("createUser: permission {} not found — skipping", permId));
+            }
+            userRepository.save(withPerms);
+            saved = withPerms;
         }
 
         auditService.recordInfo("USER", saved.getId(), AuditActions.USER_CREATED, null, saved);
@@ -249,6 +269,51 @@ public class UsersService {
         group.setUpdatedAt(OffsetDateTime.now());
         permissionGroupRepository.save(group);
         log.info("User {} removed from permission group {}", userId, groupId);
+    }
+
+    /**
+     * Returns the direct (non-group) permissions currently assigned to the user.
+     */
+    @Transactional(readOnly = true)
+    public Set<Permission> getDirectPermissions(UUID userId) {
+        return loadUserWithPermissions(userId).getDirectPermissions();
+    }
+
+    /**
+     * Replaces the full set of direct permission assignments for a user.
+     * Permissions not belonging to any of the user's current organizations are rejected.
+     *
+     * @param userId        target user identifier
+     * @param permissionIds full replacement set of permission IDs (empty = revoke all)
+     * @return the updated set of direct permissions
+     */
+    @Transactional
+    public Set<Permission> replaceDirectPermissions(UUID userId, List<UUID> permissionIds) {
+        User user = loadUserWithPermissions(userId);
+
+        Set<UUID> userOrgIds = user.getMemberships() == null ? Set.of()
+                : user.getMemberships().stream()
+                        .filter(m -> MembershipStatus.ACTIVE == m.getStatus())
+                        .map(m -> m.getOrganization().getId())
+                        .collect(Collectors.toSet());
+
+        Set<Permission> newSet = new HashSet<>();
+        for (UUID permId : permissionIds) {
+            Permission perm = permissionRepository.findById(permId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Permission not found: " + permId));
+            UUID permOrgId = perm.getOrganization() != null ? perm.getOrganization().getId() : null;
+            if (!userOrgIds.isEmpty() && (permOrgId == null || !userOrgIds.contains(permOrgId))) {
+                throw new com.asms.exception.ValidationException("PERMISSION_ORG_MISMATCH",
+                        "Permission " + permId + " does not belong to any of the user's organizations");
+            }
+            newSet.add(perm);
+        }
+
+        user.getDirectPermissions().clear();
+        user.getDirectPermissions().addAll(newSet);
+        userRepository.save(user);
+        log.info("Direct permissions replaced for user {} — {} permission(s) assigned", userId, newSet.size());
+        return user.getDirectPermissions();
     }
 
     /**

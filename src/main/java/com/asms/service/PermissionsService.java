@@ -116,14 +116,20 @@ public class PermissionsService {
 
     @Transactional(readOnly = true)
     public Page<Permission> listPermissions(
-            Integer page, Integer size, UUID organizationId, String status) {
-        UUID orgId = organizationId != null ? organizationId : TenantContext.getRequiredOrgId();
-        if (status != null) {
-            return permissionRepository.findByOrganizationIdAndStatus(orgId, PermissionStatus.valueOf(status),
-                    PageRequest.of(page != null ? page : 0, size != null ? size : 20));
+            Integer page, Integer size, UUID organizationId, List<UUID> organizationIds, String status) {
+        PageRequest pageable = PageRequest.of(page != null ? page : 0, size != null ? size : 20);
+
+        if (organizationIds != null && !organizationIds.isEmpty()) {
+            return status != null
+                    ? permissionRepository.findByOrganizationIdInAndStatus(
+                            organizationIds, PermissionStatus.valueOf(status), pageable)
+                    : permissionRepository.findByOrganizationIdIn(organizationIds, pageable);
         }
-        return permissionRepository.findByOrganizationId(orgId,
-                PageRequest.of(page != null ? page : 0, size != null ? size : 20));
+
+        UUID orgId = organizationId != null ? organizationId : TenantContext.getRequiredOrgId();
+        return status != null
+                ? permissionRepository.findByOrganizationIdAndStatus(orgId, PermissionStatus.valueOf(status), pageable)
+                : permissionRepository.findByOrganizationId(orgId, pageable);
     }
 
     // ─── LIFECYCLE TRANSITION ────────────────────────────────────────────────

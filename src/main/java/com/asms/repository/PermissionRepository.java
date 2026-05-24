@@ -24,6 +24,10 @@ public interface PermissionRepository extends JpaRepository<Permission, UUID> {
 
     Page<Permission> findByOrganizationId(UUID organizationId, Pageable pageable);
 
+    Page<Permission> findByOrganizationIdInAndStatus(List<UUID> organizationIds, PermissionStatus status, Pageable pageable);
+
+    Page<Permission> findByOrganizationIdIn(List<UUID> organizationIds, Pageable pageable);
+
     /**
      * Returns all ACTIVE permissions directly assigned to a user via any group,
      * for the given org — used by the effective-permission computation (ADR-008).

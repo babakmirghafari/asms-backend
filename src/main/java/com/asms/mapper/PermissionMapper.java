@@ -4,6 +4,7 @@ import com.asms.domain.Permission;
 import com.asms.domain.enums.PermissionStatus;
 import com.asms.model.CreatePermissionRequestDto;
 import com.asms.model.PermissionDto;
+import com.asms.model.PermissionSummaryDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants;
@@ -19,6 +20,20 @@ public interface PermissionMapper {
     @Mapping(target = "action", source = "action", qualifiedByName = "stringToActionEnum")
     @Mapping(target = "status", source = "status")
     PermissionDto toDto(Permission permission);
+
+    @Mapping(target = "organizationId", source = "organization.id")
+    @Mapping(target = "action", source = "action", qualifiedByName = "stringToSummaryActionEnum")
+    PermissionSummaryDto toSummaryDto(Permission permission);
+
+    @Named("stringToSummaryActionEnum")
+    static PermissionSummaryDto.ActionEnum stringToSummaryActionEnum(String action) {
+        if (action == null) return null;
+        try {
+            return PermissionSummaryDto.ActionEnum.fromValue(action);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
 
     @ValueMapping(source = MappingConstants.ANY_REMAINING, target = MappingConstants.THROW_EXCEPTION)
     PermissionDto.StatusEnum toStatusEnum(PermissionStatus status);

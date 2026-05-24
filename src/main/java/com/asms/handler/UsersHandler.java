@@ -1,11 +1,15 @@
 package com.asms.handler;
 
 import com.asms.api.UsersApiDelegate;
+import com.asms.domain.Permission;
 import com.asms.domain.User;
 import com.asms.domain.enums.UserStatus;
+import com.asms.mapper.PermissionMapper;
 import com.asms.mapper.UserMapper;
+import com.asms.model.AssignDirectPermissionsRequestDto;
 import com.asms.model.CreateUserRequestDto;
 import com.asms.model.PagedResponseDto;
+import com.asms.model.PermissionSummaryDto;
 import com.asms.model.UpdateUserRequestDto;
 import com.asms.model.UserDto;
 import com.asms.model.UserStatusUpdateRequestDto;
@@ -18,6 +22,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -37,6 +42,7 @@ public class UsersHandler implements UsersApiDelegate {
 
     private final UsersService usersService;
     private final UserMapper userMapper;
+    private final PermissionMapper permissionMapper;
 
     @Override
     public ResponseEntity<UserDto> createUser(CreateUserRequestDto createUserRequestDto) {
@@ -76,6 +82,26 @@ public class UsersHandler implements UsersApiDelegate {
         UserStatus newStatus = UserStatus.valueOf(userStatusUpdateRequestDto.getStatus().getValue());
         User updated = usersService.updateUserStatus(userId, newStatus);
         return ResponseEntity.ok(userMapper.toDto(updated));
+    }
+
+    @Override
+    public ResponseEntity<List<PermissionSummaryDto>> getUserDirectPermissions(UUID userId) {
+        Set<Permission> permissions = usersService.getDirectPermissions(userId);
+        List<PermissionSummaryDto> dtos = permissions.stream()
+                .map(permissionMapper::toSummaryDto)
+                .toList();
+        return ResponseEntity.ok(dtos);
+    }
+
+    @Override
+    public ResponseEntity<List<PermissionSummaryDto>> assignUserDirectPermissions(
+            UUID userId, AssignDirectPermissionsRequestDto requestDto) {
+        List<UUID> permissionIds = requestDto.getPermissionIds();
+        Set<Permission> updated = usersService.replaceDirectPermissions(userId, permissionIds);
+        List<PermissionSummaryDto> dtos = updated.stream()
+                .map(permissionMapper::toSummaryDto)
+                .toList();
+        return ResponseEntity.ok(dtos);
     }
 
 }
