@@ -2,6 +2,7 @@ package com.asms.domain;
 
 import com.asms.domain.enums.OrganizationStatus;
 import com.asms.domain.enums.converter.OrganizationStatusConverter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
@@ -69,6 +70,7 @@ public class Organization {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "organization", fetch = FetchType.LAZY)
     private List<Membership> memberships;
 }

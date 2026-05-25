@@ -2,6 +2,7 @@ package com.asms.domain;
 
 import com.asms.domain.enums.PermissionStatus;
 import com.asms.domain.enums.converter.PermissionStatusConverter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
@@ -64,6 +65,7 @@ public class Permission {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
+    @JsonIgnore
     @ManyToMany(mappedBy = "permissions")
     @Builder.Default
     private Set<PermissionGroup> permissionGroups = new HashSet<>();

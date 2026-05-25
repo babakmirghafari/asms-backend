@@ -7,6 +7,7 @@ import com.asms.domain.enums.UserStatus;
 import com.asms.domain.enums.converter.DeliveryMethodConverter;
 import com.asms.domain.enums.converter.DepartmentConverter;
 import com.asms.domain.enums.converter.UserStatusConverter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -96,6 +97,7 @@ public class User {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
     private List<Membership> memberships;
 
@@ -103,6 +105,7 @@ public class User {
      * Inverse side of the {@code permission_group_members} join table.
      * The owning side is {@link PermissionGroup#members} — no new table needed.
      */
+    @JsonIgnore
     @ManyToMany(mappedBy = "members", fetch = FetchType.LAZY)
     @Builder.Default
     private Set<PermissionGroup> permissionGroups = new HashSet<>();
