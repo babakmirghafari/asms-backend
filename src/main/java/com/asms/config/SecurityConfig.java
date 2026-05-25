@@ -1,10 +1,12 @@
 package com.asms.config;
 
 import com.asms.security.TenantContextFilter;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -53,6 +55,16 @@ public class SecurityConfig {
                 ).permitAll()
                 // All other endpoints require authentication
                 .anyRequest().authenticated()
+            )
+            // Return 401 for unauthenticated requests — Spring Security 6.1+ defaults to
+            // Http403ForbiddenEntryPoint when no entry point is configured, so we must set one.
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((req, res, e) -> {
+                    res.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                    res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    res.getWriter().write(
+                        "{\"code\":\"UNAUTHORIZED\",\"message\":\"Authentication required\"}");
+                })
             )
             // Use our own TenantContextFilter (JJWT-based) — no Spring OAuth2 resource server
             .addFilterBefore(tenantContextFilter, UsernamePasswordAuthenticationFilter.class);
