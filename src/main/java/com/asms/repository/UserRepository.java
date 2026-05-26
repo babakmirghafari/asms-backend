@@ -37,6 +37,12 @@ public interface UserRepository extends JpaRepository<User, UUID> {
             SELECT u.* FROM users u
             WHERE u.status != :deletedKey
               AND (:statusKey IS NULL OR u.status = :statusKey)
+              AND EXISTS (
+                  SELECT 1 FROM memberships m
+                  WHERE m.user_id = u.id
+                    AND m.org_id = :orgId
+                    AND m.status = :activeKey
+              )
               AND (:search IS NULL
                    OR LOWER(u.username)  LIKE LOWER(CONCAT('%', :search, '%'))
                    OR LOWER(u.email)     LIKE LOWER(CONCAT('%', :search, '%'))

@@ -41,6 +41,12 @@ public class Organization {
     @Column(name = "name", nullable = false)
     private String name;
 
+    @Column(name = "domain", unique = true)
+    private String domain;
+
+    @Column(name = "description")
+    private String description;
+
     @Column(name = "slug", nullable = false, unique = true)
     private String slug;
 

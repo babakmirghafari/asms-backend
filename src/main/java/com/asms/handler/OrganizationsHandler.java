@@ -5,8 +5,11 @@ import com.asms.domain.Organization;
 import com.asms.mapper.OrganizationMapper;
 import com.asms.model.CreateOrganizationRequestDto;
 import com.asms.model.OrganizationDto;
+import com.asms.model.OrganizationSettingsDto;
 import com.asms.model.PagedResponseDto;
 import com.asms.model.UpdateOrganizationRequestDto;
+import com.asms.model.UpdateOrganizationSettingsRequestDto;
+import com.asms.service.OrganizationSettingsService;
 import com.asms.service.OrganizationsService;
 import com.asms.util.PageResponseBuilder;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +35,7 @@ public class OrganizationsHandler implements OrganizationsApiDelegate {
 
     private final OrganizationsService organizationsService;
     private final OrganizationMapper organizationMapper;
+    private final OrganizationSettingsService organizationSettingsService;
 
     @Override
     public ResponseEntity<OrganizationDto> createOrganization(
@@ -68,6 +72,17 @@ public class OrganizationsHandler implements OrganizationsApiDelegate {
         Organization patch = organizationMapper.toOrganizationPatch(updateOrganizationRequestDto);
         Organization org = organizationsService.updateOrganization(organizationId, patch);
         return ResponseEntity.ok(organizationMapper.toDto(org));
+    }
+
+    @Override
+    public ResponseEntity<OrganizationSettingsDto> getOrganizationSettings(UUID organizationId) {
+        return ResponseEntity.ok(organizationSettingsService.getSettings(organizationId));
+    }
+
+    @Override
+    public ResponseEntity<OrganizationSettingsDto> updateOrganizationSettings(
+            UUID organizationId, UpdateOrganizationSettingsRequestDto updateOrganizationSettingsRequestDto) {
+        return ResponseEntity.ok(organizationSettingsService.updateSettings(organizationId, updateOrganizationSettingsRequestDto));
     }
 
     /** Mirrors the slug generation logic from OrganizationsService (now moved here). */
