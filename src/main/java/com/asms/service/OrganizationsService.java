@@ -87,9 +87,10 @@ public class OrganizationsService {
         Organization org = organizationRepository.findById(organizationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Organization not found: " + organizationId));
 
-        if (patch.getName() != null)    org.setName(patch.getName());
-        if (patch.getLogoUrl() != null) org.setLogoUrl(patch.getLogoUrl());
-        if (patch.getStatus() != null)  org.setStatus(patch.getStatus());
+        if (patch.getName() != null)        org.setName(patch.getName());
+        if (patch.getDescription() != null) org.setDescription(patch.getDescription());
+        if (patch.getLogoUrl() != null)     org.setLogoUrl(patch.getLogoUrl());
+        if (patch.getStatus() != null)      org.setStatus(patch.getStatus());
         org.setUpdatedAt(OffsetDateTime.now());
 
         Organization saved = organizationRepository.save(org);

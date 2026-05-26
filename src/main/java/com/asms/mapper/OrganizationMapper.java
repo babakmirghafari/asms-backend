@@ -33,6 +33,8 @@ public interface OrganizationMapper {
         return Organization.builder()
                 .name(dto.getName())
                 .slug(slug)
+                .domain(dto.getDomain())
+                .description(dto.getDescription())
                 .logoUrl(dto.getLogoUrl())
                 .status(OrganizationStatus.ACTIVE)
                 .createdAt(OffsetDateTime.now())
@@ -48,6 +50,7 @@ public interface OrganizationMapper {
                 : null;
         return Organization.builder()
                 .name(dto.getName())
+                .description(dto.getDescription())
                 .logoUrl(dto.getLogoUrl())
                 .status(status)
                 .build();
