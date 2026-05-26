@@ -338,10 +338,10 @@ CREATE INDEX idx_permission_imports_status ON permission_imports(status, expires
 -- ─── SEED DATA (dev/test only) ───────────────────────────────────────────────
 -- Credentials: admin / <any password>, mfa.user / <any password>
 
-INSERT INTO organizations (id, name, slug, display_name, status, created_at, updated_at)
+INSERT INTO organizations (id, name, slug, display_name, domain, description, status, created_at, updated_at)
 VALUES
-    ('aaaaaaaa-0000-0000-0000-000000000001', 'Acme Corp', 'acme-corp', 'Acme Corporation', 1, now(), now()),
-    ('aaaaaaaa-0000-0000-0000-000000000002', 'Beta LLC',  'beta-llc',  'Beta LLC',         1, now(), now())
+    ('aaaaaaaa-0000-0000-0000-000000000001', 'Acme Corp', 'acme-corp', 'Acme Corporation', 'acmecorp.com', 'Primary enterprise tenant for Acme Corp', 1, now(), now()),
+    ('aaaaaaaa-0000-0000-0000-000000000002', 'Beta LLC',  'beta-llc',  'Beta LLC',         'betallc.io',   'Secondary tenant for Beta LLC',            1, now(), now())
 ON CONFLICT DO NOTHING;
 
 INSERT INTO users (id, username, email, full_name, status, password_hash,
