@@ -1,6 +1,8 @@
 package com.asms.domain;
 
+import com.asms.domain.enums.OrganizationPlan;
 import com.asms.domain.enums.OrganizationStatus;
+import com.asms.domain.enums.converter.OrganizationPlanConverter;
 import com.asms.domain.enums.converter.OrganizationStatusConverter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
@@ -57,11 +59,13 @@ public class Organization {
     @JoinColumn(name = "parent_org_id")
     private Organization parentOrganization;
 
-    @Column(name = "data_residency")
-    private String dataResidency;
-
     @Column(name = "logo_url")
     private String logoUrl;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_id")
+    private User owner;
+
 
     @Column(name = "primary_color")
     private String primaryColor;
@@ -69,6 +73,13 @@ public class Organization {
     @Column(name = "status", nullable = false)
     @Convert(converter = OrganizationStatusConverter.class)
     private OrganizationStatus status;
+
+    @Column(name = "plan", nullable = false)
+    @Convert(converter = OrganizationPlanConverter.class)
+    private OrganizationPlan plan;
+
+    @Column(name = "country", nullable = false, updatable = false)
+    private String country;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;

@@ -6,6 +6,7 @@ import com.asms.domain.Permission;
 import com.asms.domain.User;
 import com.asms.domain.enums.AuditSeverity;
 import com.asms.domain.enums.MembershipStatus;
+import com.asms.domain.enums.OrganizationPlan;
 import com.asms.domain.enums.OrganizationStatus;
 import com.asms.domain.enums.PermissionStatus;
 import com.asms.domain.enums.UserRole;
@@ -77,6 +78,8 @@ class MultiTenantIsolationIntegrationTest extends BaseIntegrationTest {
                 .name("Org A AC13")
                 .slug("org-a-ac13-" + nonce)
                 .status(OrganizationStatus.ACTIVE)
+                .plan(OrganizationPlan.STARTER)
+                .country("US")
                 .createdAt(OffsetDateTime.now())
                 .updatedAt(OffsetDateTime.now())
                 .build());
@@ -85,6 +88,8 @@ class MultiTenantIsolationIntegrationTest extends BaseIntegrationTest {
                 .name("Org B AC13")
                 .slug("org-b-ac13-" + nonce)
                 .status(OrganizationStatus.ACTIVE)
+                .plan(OrganizationPlan.STARTER)
+                .country("US")
                 .createdAt(OffsetDateTime.now())
                 .updatedAt(OffsetDateTime.now())
                 .build());

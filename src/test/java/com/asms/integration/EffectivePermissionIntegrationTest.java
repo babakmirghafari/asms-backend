@@ -4,6 +4,7 @@ import com.asms.domain.Organization;
 import com.asms.domain.Permission;
 import com.asms.domain.PermissionGroup;
 import com.asms.domain.User;
+import com.asms.domain.enums.OrganizationPlan;
 import com.asms.domain.enums.OrganizationStatus;
 import com.asms.domain.enums.PermissionStatus;
 import com.asms.domain.enums.UserStatus;
@@ -59,6 +60,8 @@ class EffectivePermissionIntegrationTest extends BaseIntegrationTest {
                 .name("Test Org AC11")
                 .slug("test-org-ac11-" + System.nanoTime())
                 .status(OrganizationStatus.ACTIVE)
+                .plan(OrganizationPlan.STARTER)
+                .country("US")
                 .createdAt(OffsetDateTime.now())
                 .updatedAt(OffsetDateTime.now())
                 .build());

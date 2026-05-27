@@ -3,6 +3,7 @@ package com.asms.integration;
 import com.asms.domain.AuditLog;
 import com.asms.domain.Organization;
 import com.asms.domain.User;
+import com.asms.domain.enums.OrganizationPlan;
 import com.asms.domain.enums.OrganizationStatus;
 import com.asms.domain.enums.UserStatus;
 import com.asms.repository.AuditLogRepository;
@@ -54,6 +55,8 @@ class AuditServiceIntegrationTest extends BaseIntegrationTest {
                 .name("Audit Test Org")
                 .slug("audit-test-org-" + System.nanoTime())
                 .status(OrganizationStatus.ACTIVE)
+                .plan(OrganizationPlan.STARTER)
+                .country("US")
                 .createdAt(OffsetDateTime.now())
                 .updatedAt(OffsetDateTime.now())
                 .build());

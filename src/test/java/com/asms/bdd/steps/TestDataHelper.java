@@ -31,10 +31,10 @@ public class TestDataHelper {
         UUID id = UUID.randomUUID();
         String slug = "test-org-" + id.toString().substring(0, 8);
         jdbc.update("""
-                INSERT INTO organizations(id, name, slug, display_name, status, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, now(), now())
+                INSERT INTO organizations(id, name, slug, display_name, status, plan, country, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, now(), now())
                 """, id, "Test Org " + id.toString().substring(0, 8), slug, "Test Org",
-                OrganizationStatus.ACTIVE.getKey());
+                OrganizationStatus.ACTIVE.getKey(), 1 /* STARTER */, "US");
         return id;
     }
 
