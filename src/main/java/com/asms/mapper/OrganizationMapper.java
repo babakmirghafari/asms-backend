@@ -1,6 +1,7 @@
 package com.asms.mapper;
 
 import com.asms.domain.Organization;
+import com.asms.domain.enums.OrganizationPlan;
 import com.asms.domain.enums.OrganizationStatus;
 import com.asms.model.CreateOrganizationRequestDto;
 import com.asms.model.OrganizationDto;
@@ -18,12 +19,19 @@ public interface OrganizationMapper {
 
     @Mapping(target = "parentOrganizationId", source = "parentOrganization.id")
     @Mapping(target = "status", source = "status")
+    @Mapping(target = "plan", source = "plan")
     OrganizationDto toDto(Organization org);
 
     @ValueMapping(source = "ACTIVE", target = "ACTIVE")
     @ValueMapping(source = "SUSPENDED", target = "SUSPENDED")
     @ValueMapping(source = MappingConstants.ANY_REMAINING, target = MappingConstants.NULL)
     OrganizationDto.StatusEnum toStatusEnum(OrganizationStatus status);
+
+    @ValueMapping(source = "STARTER", target = "STARTER")
+    @ValueMapping(source = "PROFESSIONAL", target = "PROFESSIONAL")
+    @ValueMapping(source = "ENTERPRISE", target = "ENTERPRISE")
+    @ValueMapping(source = MappingConstants.ANY_REMAINING, target = MappingConstants.NULL)
+    OrganizationDto.PlanEnum toPlanEnum(OrganizationPlan plan);
 
     // Scalar fields only — if dto.getParentOrganizationId() is non-null, service must
     // load the parent Organization and call entity.setParentOrganization(parent).
