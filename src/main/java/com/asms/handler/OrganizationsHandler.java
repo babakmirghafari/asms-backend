@@ -44,7 +44,8 @@ public class OrganizationsHandler implements OrganizationsApiDelegate {
         Organization entity = organizationMapper.toOrganizationEntity(
                 createOrganizationRequestDto, slug);
         UUID parentId = createOrganizationRequestDto.getParentOrganizationId();
-        Organization org = organizationsService.createOrganization(entity, parentId);
+        UUID ownerId = createOrganizationRequestDto.getOwnerUserId();
+        Organization org = organizationsService.createOrganization(entity, parentId, ownerId);
         return ResponseEntity.status(201).body(organizationMapper.toDto(org));
     }
 
@@ -85,7 +86,9 @@ public class OrganizationsHandler implements OrganizationsApiDelegate {
         return ResponseEntity.ok(organizationSettingsService.updateSettings(organizationId, updateOrganizationSettingsRequestDto));
     }
 
-    /** Mirrors the slug generation logic from OrganizationsService (now moved here). */
+    /**
+     * Mirrors the slug generation logic from OrganizationsService (now moved here).
+     */
     private String generateSlug(String name) {
         return name.toLowerCase()
                 .replaceAll("[^a-z0-9\\s-]", "")

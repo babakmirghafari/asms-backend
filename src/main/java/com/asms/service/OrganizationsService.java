@@ -1,9 +1,11 @@
 package com.asms.service;
 
 import com.asms.domain.Organization;
+import com.asms.domain.User;
 import com.asms.exception.ResourceNotFoundException;
 import com.asms.domain.enums.OrganizationStatus;
 import com.asms.repository.OrganizationRepository;
+import com.asms.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -28,19 +30,27 @@ public class OrganizationsService {
 
     private final OrganizationRepository organizationRepository;
     private final AuditService auditService;
+    private final UserRepository userRepository;
 
     /**
      * Persists a new organization. The handler converts the request DTO to an
      * {@link Organization} entity via the mapper before calling here.
      */
     @Transactional
-    public Organization createOrganization(Organization org, UUID parentOrgId) {
+    public Organization createOrganization(Organization org, UUID parentOrgId, UUID ownerId) {
         log.debug("Create organization: {}", org.getName());
         if (parentOrgId != null) {
             Organization parent = organizationRepository.findById(parentOrgId)
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Parent organization not found: " + parentOrgId));
             org.setParentOrganization(parent);
+        }
+
+        if(ownerId != null) {
+            User owner = userRepository.findById(ownerId)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Owner user not found: " + ownerId));
+            org.setOwner(owner);
         }
         Organization saved = organizationRepository.save(org);
         auditService.recordInfo("ORGANIZATION", saved.getId(), "ORGANIZATION_CREATED", null, saved);
