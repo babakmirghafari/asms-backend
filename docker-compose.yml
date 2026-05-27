@@ -9,7 +9,7 @@ services:
     environment:
       POSTGRES_DB: asms
       POSTGRES_USER: asms
-      POSTGRES_PASSWORD: asms
+      POSTGRES_PASSWORD: "MySecretPassword@@2026@@asms!!"
     ports:
       - "5432:5432"
     volumes:

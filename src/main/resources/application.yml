@@ -5,7 +5,7 @@ spring:
   datasource:
     url: ${URL:jdbc:postgresql://localhost:5432/asms}
     username: ${USERNAME:asms}
-    password: ${PASSWORD:asms}
+    password: ${PASSWORD:MySecretPassword@@2026@@asms!!}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: ${DB_POOL_MAX_SIZE:10}
