@@ -2,6 +2,7 @@ package com.asms.exception;
 
 import com.asms.model.ErrorResponseDto;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -101,6 +102,17 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponseDto> handleDataIntegrity(DataIntegrityViolationException ex) {
+        log.debug("Data integrity violation", ex);
+        String message = resolveConstraintMessage(ex.getMostSpecificCause().getMessage());
+        ErrorResponseDto error = new ErrorResponseDto()
+            .code("DUPLICATE_VALUE")
+            .message(message)
+            .timestamp(OffsetDateTime.now());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDto> handleGeneral(Exception ex) {
         log.error("Unexpected error", ex);
@@ -109,5 +121,18 @@ public class GlobalExceptionHandler {
             .message("An unexpected error occurred")
             .timestamp(OffsetDateTime.now());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+    }
+
+    private static String resolveConstraintMessage(String cause) {
+        if (cause == null) return "A duplicate value was detected.";
+        if (cause.contains("users_username_key"))                return "A user with this username already exists.";
+        if (cause.contains("users_email_key"))                   return "A user with this email already exists.";
+        if (cause.contains("organizations_domain_key"))          return "An organization with this domain already exists.";
+        if (cause.contains("organizations_slug_key"))            return "An organization with this name already exists.";
+        if (cause.contains("memberships_user_id_org_id_key"))    return "This user is already a member of this organization.";
+        if (cause.contains("permissions_org_id_name_key"))       return "A permission with this name already exists.";
+        if (cause.contains("permission_groups_org_id_name_key")) return "A permission group with this name already exists.";
+        if (cause.contains("applications_org_id_name_key"))      return "An application with this name already exists.";
+        return "A duplicate value was detected. Please check your input.";
     }
 }

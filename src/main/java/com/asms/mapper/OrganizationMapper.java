@@ -18,6 +18,7 @@ import java.time.OffsetDateTime;
 public interface OrganizationMapper {
 
     @Mapping(target = "parentOrganizationId", source = "parentOrganization.id")
+    @Mapping(target = "ownerUserId", source = "owner.id")
     @Mapping(target = "status", source = "status")
     @Mapping(target = "plan", source = "plan")
     OrganizationDto toDto(Organization org);
@@ -38,6 +39,10 @@ public interface OrganizationMapper {
     @Named("toOrganizationEntity")
     default Organization toOrganizationEntity(CreateOrganizationRequestDto dto, String slug) {
         if (dto == null) return Organization.builder().build();
+        OrganizationPlan plan = dto.getPlan() != null
+                ? OrganizationPlan.valueOf(dto.getPlan().name())
+                : OrganizationPlan.STARTER;
+        String country = dto.getCountry() != null ? dto.getCountry() : "US";
         return Organization.builder()
                 .name(dto.getName())
                 .slug(slug)
@@ -45,6 +50,8 @@ public interface OrganizationMapper {
                 .description(dto.getDescription())
                 .logoUrl(dto.getLogoUrl())
                 .status(OrganizationStatus.ACTIVE)
+                .plan(plan)
+                .country(country)
                 .createdAt(OffsetDateTime.now())
                 .updatedAt(OffsetDateTime.now())
                 .build();
