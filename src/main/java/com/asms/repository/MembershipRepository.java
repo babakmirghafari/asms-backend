@@ -1,6 +1,7 @@
 package com.asms.repository;
 
 import com.asms.domain.Membership;
+import com.asms.domain.enums.MembershipStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -26,8 +27,10 @@ public interface MembershipRepository extends JpaRepository<Membership, UUID> {
             SELECT m FROM Membership m
             WHERE (:orgId IS NULL OR m.organization.id = :orgId)
               AND (:userId IS NULL OR m.user.id = :userId)
+              AND m.status != :removedStatus
             """)
     Page<Membership> findFiltered(@Param("orgId") UUID orgId,
                                    @Param("userId") UUID userId,
+                                   @Param("removedStatus") MembershipStatus removedStatus,
                                    Pageable pageable);
 }

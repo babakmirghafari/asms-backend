@@ -5,6 +5,7 @@ import com.asms.domain.Organization;
 import com.asms.domain.User;
 import com.asms.domain.enums.MembershipStatus;
 import com.asms.exception.AccessDeniedException;
+import com.asms.exception.ConflictException;
 import com.asms.exception.ResourceNotFoundException;
 import com.asms.repository.MembershipRepository;
 import com.asms.repository.OrganizationRepository;
@@ -46,6 +47,22 @@ public class MembershipsService {
                 .orElseThrow(() -> new ResourceNotFoundException("Organization not found: " + orgId));
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
+
+        java.util.Optional<Membership> existing = membershipRepository.findByUserIdAndOrganizationId(userId, orgId);
+        if (existing.isPresent()) {
+            Membership m = existing.get();
+            if (m.getStatus() != MembershipStatus.REMOVED) {
+                throw new ConflictException("This user is already a member of this organization.");
+            }
+            // Reactivate the soft-deleted row instead of inserting a duplicate
+            // (unique constraint on user_id + org_id would block a new insert).
+            m.setStatus(MembershipStatus.ACTIVE);
+            m.setUpdatedAt(OffsetDateTime.now());
+            Membership saved = membershipRepository.save(m);
+            auditService.recordInfo("MEMBERSHIP", saved.getId(), "MEMBERSHIP_REACTIVATED", null, saved);
+            return saved;
+        }
+
         membership.setOrganization(org);
         membership.setUser(user);
         Membership saved = membershipRepository.save(membership);
@@ -86,7 +103,7 @@ public class MembershipsService {
     public Page<Membership> listMemberships(
             Integer page, Integer size, UUID organizationId, UUID userId) {
         return membershipRepository.findFiltered(
-                organizationId, userId,
+                organizationId, userId, MembershipStatus.REMOVED,
                 PageRequest.of(page != null ? page : 0, size != null ? size : 20));
     }
 }

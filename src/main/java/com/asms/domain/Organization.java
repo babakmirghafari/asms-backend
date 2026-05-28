@@ -16,6 +16,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.Formula;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -90,4 +91,8 @@ public class Organization {
     @JsonIgnore
     @OneToMany(mappedBy = "organization", fetch = FetchType.LAZY)
     private List<Membership> memberships;
+
+    // status != 4 excludes REMOVED (MembershipStatus.REMOVED = 4)
+    @Formula("(SELECT COUNT(m.id) FROM memberships m WHERE m.org_id = id AND m.status != 4)")
+    private int memberCount;
 }
