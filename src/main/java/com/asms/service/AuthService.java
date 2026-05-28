@@ -4,6 +4,7 @@ import com.asms.config.AsmsSecurityProperties;
 import com.asms.constant.AuditActions;
 import com.asms.domain.Membership;
 import com.asms.domain.User;
+import com.asms.domain.enums.MembershipStatus;
 import com.asms.domain.enums.UserRole;
 import com.asms.domain.enums.UserStatus;
 import com.asms.exception.AccountLockedException;
@@ -228,9 +229,10 @@ public class AuthService {
 
         // Look up the membership to verify the user belongs to this org
         if (userId != null && orgId != null) {
-            Optional<Membership> membership = membershipRepository.findByUserIdAndOrganizationId(userId, orgId);
+            Optional<Membership> membership = membershipRepository.findByUserIdAndOrganizationId(
+                    userId, orgId, MembershipStatus.REMOVED);
             if (membership.isEmpty()) {
-                log.warn("User {} is not a member of org {}", userId, orgId);
+                log.warn("User {} is not an active member of org {}", userId, orgId);
             }
         }
 
@@ -288,7 +290,7 @@ public class AuthService {
 
     private List<String> resolveRoles(UUID userId, UUID orgId) {
         if (userId == null || orgId == null) return List.of(UserRole.MEMBER.name());
-        return membershipRepository.findByUserIdAndOrganizationId(userId, orgId)
+        return membershipRepository.findByUserIdAndOrganizationId(userId, orgId, MembershipStatus.REMOVED)
                 .map(m -> List.of(m.getRole().name()))
                 .orElse(List.of(UserRole.MEMBER.name()));
     }

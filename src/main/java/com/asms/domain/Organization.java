@@ -93,6 +93,7 @@ public class Organization {
     private List<Membership> memberships;
 
     // status != 4 excludes REMOVED (MembershipStatus.REMOVED = 4)
-    @Formula("(SELECT COUNT(m.id) FROM memberships m WHERE m.org_id = id AND m.status != 4)")
+    // {alias} is replaced by Hibernate with the entity's table alias, avoiding ambiguity with memberships.id
+    @Formula("(SELECT COUNT(m.id) FROM memberships m WHERE m.org_id = {alias}.id AND m.status != 4)")
     private int memberCount;
 }

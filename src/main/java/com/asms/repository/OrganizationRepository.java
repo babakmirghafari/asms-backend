@@ -19,22 +19,22 @@ public interface OrganizationRepository extends JpaRepository<Organization, UUID
     boolean existsBySlug(String slug);
 
     @Query(value = """
-            SELECT *,
+            SELECT o.*,
                    (SELECT COUNT(m.id) FROM memberships m
-                    WHERE m.org_id = id AND m.status != 4) AS membercount
-            FROM organizations
-            WHERE status != 3
+                    WHERE m.org_id = o.id AND m.status != 4) AS membercount
+            FROM organizations o
+            WHERE o.status != 3
               AND (:search IS NULL
-                   OR LOWER(name) LIKE LOWER(CONCAT('%', :search, '%'))
-                   OR LOWER(slug) LIKE LOWER(CONCAT('%', :search, '%')))
-            ORDER BY name ASC
+                   OR LOWER(o.name) LIKE LOWER(CONCAT('%', :search, '%'))
+                   OR LOWER(o.slug) LIKE LOWER(CONCAT('%', :search, '%')))
+            ORDER BY o.name ASC
             """,
             countQuery = """
-            SELECT COUNT(*) FROM organizations
-            WHERE status != 3
+            SELECT COUNT(*) FROM organizations o
+            WHERE o.status != 3
               AND (:search IS NULL
-                   OR LOWER(name) LIKE LOWER(CONCAT('%', :search, '%'))
-                   OR LOWER(slug) LIKE LOWER(CONCAT('%', :search, '%')))
+                   OR LOWER(o.name) LIKE LOWER(CONCAT('%', :search, '%'))
+                   OR LOWER(o.slug) LIKE LOWER(CONCAT('%', :search, '%')))
             """,
             nativeQuery = true)
     Page<Organization> findAllActive(@Param("search") String search, Pageable pageable);

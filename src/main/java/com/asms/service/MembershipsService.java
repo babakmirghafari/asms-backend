@@ -48,7 +48,7 @@ public class MembershipsService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
 
-        java.util.Optional<Membership> existing = membershipRepository.findByUserIdAndOrganizationId(userId, orgId);
+        java.util.Optional<Membership> existing = membershipRepository.findByUserIdAndOrganizationIdIncludingRemoved(userId, orgId);
         if (existing.isPresent()) {
             Membership m = existing.get();
             if (m.getStatus() != MembershipStatus.REMOVED) {
@@ -74,18 +74,36 @@ public class MembershipsService {
 
     @Transactional
     public void deleteMembership(UUID membershipId) {
-        Membership m = membershipRepository.findById(membershipId)
+        // Step 1: load with associations so tenant check can read m.getOrganization()
+        Membership m = membershipRepository.findByIdWithAssociations(membershipId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Membership not found: " + membershipId));
-        // AC-13: ensure the membership belongs to caller's org
+
+        // Step 2: tenant isolation — return 404-style AccessDenied so the caller
+        // cannot confirm that a cross-tenant membership exists (AC-13).
         UUID callerOrg = TenantContext.getOrgId();
         if (callerOrg != null && !callerOrg.equals(m.getOrganization().getId())) {
-            throw new AccessDeniedException("Cannot delete membership from a different organization");
+            throw new ResourceNotFoundException("Membership not found: " + membershipId);
         }
+
+        // Step 3: minimum-membership guard — a user must always retain at least one
+        // ACTIVE membership; only ACTIVE memberships count toward the minimum.
+        UUID userId = m.getUser().getId();
+        long activeCount = membershipRepository.countActiveByUserId(userId, MembershipStatus.ACTIVE);
+        if (activeCount <= 1) {
+            throw new ConflictException("LAST_ACTIVE_MEMBERSHIP",
+                    "Cannot remove user's only active membership");
+        }
+
+        // Step 4: soft-delete
         m.setStatus(MembershipStatus.REMOVED);
         m.setUpdatedAt(OffsetDateTime.now());
         membershipRepository.save(m);
+
+        // Step 5: audit
         auditService.recordInfo("MEMBERSHIP", membershipId, "MEMBERSHIP_REMOVED", null, m);
+        log.info("Membership {} removed for user {} (activeCount before removal: {})",
+                membershipId, userId, activeCount);
     }
 
     @Transactional(readOnly = true)
