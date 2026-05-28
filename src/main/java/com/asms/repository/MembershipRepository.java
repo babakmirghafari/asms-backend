@@ -15,7 +15,8 @@ import java.util.UUID;
 @Repository
 public interface MembershipRepository extends JpaRepository<Membership, UUID> {
 
-    Optional<Membership> findByUserIdAndOrganizationId(UUID userId, UUID organizationId);
+    @Query("SELECT m FROM Membership m JOIN FETCH m.user JOIN FETCH m.organization WHERE m.user.id = :userId AND m.organization.id = :organizationId")
+    Optional<Membership> findByUserIdAndOrganizationId(@Param("userId") UUID userId, @Param("organizationId") UUID organizationId);
 
     boolean existsByUserIdAndOrganizationId(UUID userId, UUID organizationId);
 
@@ -23,8 +24,19 @@ public interface MembershipRepository extends JpaRepository<Membership, UUID> {
 
     Page<Membership> findByUserId(UUID userId, Pageable pageable);
 
-    @Query("""
+    @Query("SELECT m FROM Membership m JOIN FETCH m.user JOIN FETCH m.organization WHERE m.id = :id")
+    Optional<Membership> findByIdWithAssociations(@Param("id") UUID id);
+
+    @Query(value = """
             SELECT m FROM Membership m
+            JOIN FETCH m.user
+            JOIN FETCH m.organization
+            WHERE (:orgId IS NULL OR m.organization.id = :orgId)
+              AND (:userId IS NULL OR m.user.id = :userId)
+              AND m.status != :removedStatus
+            """,
+            countQuery = """
+            SELECT COUNT(m) FROM Membership m
             WHERE (:orgId IS NULL OR m.organization.id = :orgId)
               AND (:userId IS NULL OR m.user.id = :userId)
               AND m.status != :removedStatus

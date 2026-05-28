@@ -58,6 +58,8 @@ public class MembershipsService {
             // (unique constraint on user_id + org_id would block a new insert).
             m.setStatus(MembershipStatus.ACTIVE);
             m.setUpdatedAt(OffsetDateTime.now());
+            m.setUser(user);
+            m.setOrganization(org);
             Membership saved = membershipRepository.save(m);
             auditService.recordInfo("MEMBERSHIP", saved.getId(), "MEMBERSHIP_REACTIVATED", null, saved);
             return saved;
@@ -88,7 +90,7 @@ public class MembershipsService {
 
     @Transactional(readOnly = true)
     public Membership getMembershipById(UUID membershipId) {
-        Membership m = membershipRepository.findById(membershipId)
+        Membership m = membershipRepository.findByIdWithAssociations(membershipId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Membership not found: " + membershipId));
         // AC-13: org scope validation
