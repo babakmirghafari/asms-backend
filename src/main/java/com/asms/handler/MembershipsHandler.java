@@ -55,7 +55,7 @@ public class MembershipsHandler implements MembershipsApiDelegate {
 
     @Override
     public ResponseEntity<PagedResponseDto> listMemberships(
-            Integer page, Integer size, UUID organizationId, UUID userId) {
+            Integer page, Integer size, UUID userId, UUID organizationId) {
         Page<Membership> memberships =
                 membershipsService.listMemberships(page, size, organizationId, userId);
         List<MembershipDto> dtos = memberships.getContent().stream().map(membershipMapper::toDto).toList();
