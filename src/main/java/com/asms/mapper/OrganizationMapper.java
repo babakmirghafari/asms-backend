@@ -21,6 +21,7 @@ public interface OrganizationMapper {
     @Mapping(target = "ownerUserId", source = "owner.id")
     @Mapping(target = "status", source = "status")
     @Mapping(target = "plan", source = "plan")
+    @Mapping(target = "memberCount", source = "memberCount")
     OrganizationDto toDto(Organization org);
 
     @ValueMapping(source = "ACTIVE", target = "ACTIVE")
