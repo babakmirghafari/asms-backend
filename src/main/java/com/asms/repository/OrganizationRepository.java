@@ -19,7 +19,10 @@ public interface OrganizationRepository extends JpaRepository<Organization, UUID
     boolean existsBySlug(String slug);
 
     @Query(value = """
-            SELECT * FROM organizations
+            SELECT *,
+                   (SELECT COUNT(m.id) FROM memberships m
+                    WHERE m.org_id = id AND m.status != 4) AS membercount
+            FROM organizations
             WHERE status != 3
               AND (:search IS NULL
                    OR LOWER(name) LIKE LOWER(CONCAT('%', :search, '%'))
