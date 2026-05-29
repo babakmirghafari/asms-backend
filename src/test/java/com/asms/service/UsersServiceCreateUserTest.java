@@ -62,7 +62,7 @@ class UsersServiceCreateUserTest {
                 .id(UUID.randomUUID())
                 .username("alice")
                 .email("alice@example.com")
-                .status(UserStatus.PENDING_ACTIVATION)
+                .status(UserStatus.ACTIVE)
                 .createdAt(OffsetDateTime.now())
                 .updatedAt(OffsetDateTime.now())
                 .build();
@@ -92,7 +92,7 @@ class UsersServiceCreateUserTest {
         assertThat(persisted.getFullName()).isEqualTo("Alice Smith");
         assertThat(persisted.getEmail()).isEqualTo("alice@example.com");
         assertThat(persisted.getPhoneNumber()).isEqualTo("+1-555-0100");
-        assertThat(persisted.getStatus()).isEqualTo(UserStatus.PENDING_ACTIVATION);
+        assertThat(persisted.getStatus()).isEqualTo(UserStatus.ACTIVE);
         assertThat(persisted.getCreatedAt()).isNotNull();
         assertThat(persisted.getUpdatedAt()).isNotNull();
         assertThat(result).isSameAs(savedUser);
