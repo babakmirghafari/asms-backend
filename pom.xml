@@ -28,7 +28,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
     <!-- Contract artifact -->
-    <asms-api-contract.version>2.2.0</asms-api-contract.version>
+    <asms-api-contract.version>2.3.0</asms-api-contract.version>
 
     <!-- Test dependencies -->
     <testcontainers.version>1.21.4</testcontainers.version>

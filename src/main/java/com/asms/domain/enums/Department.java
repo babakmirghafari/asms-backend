@@ -9,7 +9,8 @@ public enum Department implements ConvertableEnum {
     HR(4),
     Compliance(5),
     Engineering(6),
-    Customer_Support(7);
+    Customer_Support(7),
+    IT(8);
 
     private final int key;
 

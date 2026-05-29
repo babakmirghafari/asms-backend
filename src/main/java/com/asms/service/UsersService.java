@@ -74,9 +74,31 @@ public class UsersService {
     public User createUser(CreateUserRequestDto dto) {
         OffsetDateTime now = OffsetDateTime.now();
 
-        DeliveryMethod deliveryMethod = Boolean.TRUE.equals(dto.getSendTempPassword())
-                ? DeliveryMethod.Email
-                : DeliveryMethod.Manuel_Copy;
+        // Resolve delivery method: new deliveryMethod field takes precedence over the legacy
+        // sendTempPassword boolean. If neither is set, default to Email.
+        DeliveryMethod deliveryMethod;
+        if (dto.getDeliveryMethod() != null) {
+            deliveryMethod = switch (dto.getDeliveryMethod()) {
+                case SMS         -> DeliveryMethod.SMS;
+                case BOTH        -> DeliveryMethod.Both;
+                case MANUAL_COPY -> DeliveryMethod.Manuel_Copy;
+                default          -> DeliveryMethod.Email; // EMAIL
+            };
+        } else {
+            deliveryMethod = Boolean.TRUE.equals(dto.getSendTempPassword())
+                    ? DeliveryMethod.Email
+                    : DeliveryMethod.Manuel_Copy;
+        }
+
+        // Resolve initial status: ACTIVE maps to ACTIVE; INACTIVE maps to INACTIVE;
+        // null / unset defaults to PENDING_ACTIVATION (server-side pre-activation state).
+        UserStatus initialStatus = UserStatus.PENDING_ACTIVATION;
+        if (dto.getInitialStatus() != null) {
+            initialStatus = switch (dto.getInitialStatus()) {
+                case ACTIVE   -> UserStatus.ACTIVE;
+                case INACTIVE -> UserStatus.INACTIVE;
+            };
+        }
 
         User user = User.builder()
                 .username(dto.getUsername())
@@ -85,10 +107,19 @@ public class UsersService {
                 .phoneNumber(dto.getPhoneNumber())
                 .department(dto.getDepartment() != null ? Department.valueOf(dto.getDepartment()) : null)
                 .deliveryMethod(deliveryMethod)
-                .status(UserStatus.PENDING_ACTIVATION)
+                .mfaEnabled(Boolean.TRUE.equals(dto.getMfaEnabled()))
+                .forcePasswordChange(dto.getForcePasswordChange() == null || Boolean.TRUE.equals(dto.getForcePasswordChange()))
+                .status(initialStatus)
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
+
+        // failedLoginThreshold: the entity does not have a per-user threshold column — it uses
+        // failedLoginAttempts (the current counter). Skip silently as documented.
+        if (dto.getFailedLoginThreshold() != null) {
+            log.debug("createUser: failedLoginThreshold={} received but no per-user threshold column exists — skipping",
+                    dto.getFailedLoginThreshold());
+        }
 
         User saved = userRepository.save(user);
 
