@@ -49,6 +49,7 @@ public class SecurityConfig {
                     "/asms/v1/auth/login",
                     "/asms/v1/auth/mfa/verify",
                     "/asms/v1/auth/select-org",
+                    "/asms/v1/auth/change-password",
                     "/actuator/health",
                     "/swagger-ui/**",
                     "/v3/api-docs/**"
