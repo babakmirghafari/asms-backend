@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -61,6 +62,9 @@ public interface MembershipRepository extends JpaRepository<Membership, UUID> {
     Page<Membership> findByOrganizationId(UUID organizationId, Pageable pageable);
 
     Page<Membership> findByUserId(UUID userId, Pageable pageable);
+
+    @Query("SELECT m FROM Membership m JOIN FETCH m.organization WHERE m.user.id = :userId")
+    List<Membership> findByUserIdWithOrg(@Param("userId") UUID userId);
 
     @Query("SELECT m FROM Membership m JOIN FETCH m.user JOIN FETCH m.organization WHERE m.id = :id")
     Optional<Membership> findByIdWithAssociations(@Param("id") UUID id);

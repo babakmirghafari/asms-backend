@@ -4,7 +4,7 @@ import com.asms.domain.Membership;
 import com.asms.domain.Organization;
 import com.asms.domain.enums.MembershipStatus;
 import com.asms.repository.MembershipRepository;
-import org.springframework.data.domain.PageRequest;
+import jakarta.transaction.Transactional;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,9 +16,9 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Pre-authentication endpoint that returns the organizations a user belongs to,
+ * Pre-authentication endpoint: returns the organizations a user belongs to,
  * identified by the sessionToken (user UUID) issued during the login flow.
- * No JWT is required — secured only by knowing a valid user UUID.
+ * No JWT required — the sessionToken itself is the identity proof here.
  */
 @RestController
 @RequestMapping("/asms/v1/auth")
@@ -31,6 +31,7 @@ public class AuthOrgsController {
     }
 
     @GetMapping("/orgs")
+    @Transactional
     public ResponseEntity<List<Map<String, Object>>> getOrgsForSession(
             @RequestParam String sessionToken) {
 
@@ -41,9 +42,7 @@ public class AuthOrgsController {
             return ResponseEntity.badRequest().build();
         }
 
-        List<Membership> memberships = membershipRepository
-                .findByUserId(userId, PageRequest.of(0, 100))
-                .getContent();
+        List<Membership> memberships = membershipRepository.findByUserIdWithOrg(userId);
 
         List<Map<String, Object>> result = memberships.stream()
                 .filter(m -> m.getStatus() != MembershipStatus.REMOVED)
