@@ -167,7 +167,12 @@ public class AuthService {
      */
     @Transactional
     public User changePassword(ChangePasswordRequestDto req) {
+        // During the TEMP_PASSWORD_REQUIRED flow the user has no JWT yet — the
+        // sessionToken issued by the login handler is the user's UUID.
         UUID userId = TenantContext.getUserId();
+        if (userId == null && req.getSessionToken() != null) {
+            try { userId = UUID.fromString(req.getSessionToken()); } catch (IllegalArgumentException ignored) {}
+        }
         if (userId == null) throw new AuthenticationException("Not authenticated");
 
         User user = userRepository.findById(userId)

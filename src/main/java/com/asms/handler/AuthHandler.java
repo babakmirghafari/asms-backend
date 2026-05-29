@@ -53,6 +53,8 @@ public class AuthHandler implements AuthApiDelegate {
         response.setStatus(user.isMfaEnabled()
                 ? LoginResponseDto.StatusEnum.MFA_REQUIRED
                 : LoginResponseDto.StatusEnum.ORG_SELECTION_REQUIRED);
+        // Pass the sessionToken forward so the next step (org-selection / MFA) can identify the user.
+        response.setSessionToken(user.getId().toString());
         return ResponseEntity.ok(response);
     }
 
