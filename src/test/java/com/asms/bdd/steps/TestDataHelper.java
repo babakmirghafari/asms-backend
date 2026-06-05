@@ -104,6 +104,13 @@ public class TestDataHelper {
         return id;
     }
 
+    public UUID activatePermission(UUID permId) {
+        jdbc.update(
+            "UPDATE permissions SET status = ?, updated_at = NOW() WHERE id = ?",
+            PermissionStatus.ACTIVE.getKey(), permId);
+        return permId;
+    }
+
     public UUID createPermissionGroup(UUID orgId, String name) {
         UUID id = UUID.randomUUID();
         jdbc.update("""

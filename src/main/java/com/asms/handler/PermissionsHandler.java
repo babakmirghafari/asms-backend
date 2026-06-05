@@ -89,6 +89,16 @@ public class PermissionsHandler implements PermissionsApiDelegate {
     }
 
     @Override
+    public ResponseEntity<String> exportPermissions(
+            UUID organizationId, List<UUID> organizationIds, String status, String resource) {
+        byte[] csv = permissionsService.exportPermissions(organizationId, organizationIds, status);
+        return ResponseEntity.ok()
+                .header("Content-Type", "text/csv; charset=UTF-8")
+                .header("Content-Disposition", "attachment; filename=\"permissions.csv\"")
+                .body(new String(csv, java.nio.charset.StandardCharsets.UTF_8));
+    }
+
+    @Override
     public ResponseEntity<PermissionDto> updatePermissionStatus(
             UUID permissionId, UpdatePermissionStatusRequestDto updatePermissionStatusRequestDto) {
         PermissionStatus targetStatus = PermissionStatus.valueOf(
