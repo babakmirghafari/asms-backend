@@ -32,6 +32,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -95,7 +96,7 @@ public class PermissionsHandler implements PermissionsApiDelegate {
         return ResponseEntity.ok()
                 .header("Content-Type", "text/csv; charset=UTF-8")
                 .header("Content-Disposition", "attachment; filename=\"permissions.csv\"")
-                .body(new String(csv, java.nio.charset.StandardCharsets.UTF_8));
+                .body(new String(csv, StandardCharsets.UTF_8));
     }
 
     @Override

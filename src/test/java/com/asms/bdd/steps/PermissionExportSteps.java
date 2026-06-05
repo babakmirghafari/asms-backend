@@ -70,7 +70,7 @@ public class PermissionExportSteps {
         getExport(exportOrgId, exportActorId, status);
     }
 
-    @Then("the response content-type is {string}")
+    @And("the response content-type is {string}")
     public void theResponseContentTypeIs(String expected) {
         assertThat(lastContentType).contains(expected);
     }
