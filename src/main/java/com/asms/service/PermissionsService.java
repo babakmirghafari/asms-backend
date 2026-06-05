@@ -23,15 +23,19 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
@@ -130,6 +134,52 @@ public class PermissionsService {
         return status != null
                 ? permissionRepository.findByOrganizationIdAndStatus(orgId, PermissionStatus.valueOf(status), pageable)
                 : permissionRepository.findByOrganizationId(orgId, pageable);
+    }
+
+    // ─── EXPORT ──────────────────────────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public byte[] exportPermissions(UUID organizationId, List<UUID> organizationIds, String status) {
+        List<Permission> permissions;
+
+        if (organizationIds != null && !organizationIds.isEmpty()) {
+            permissions = status != null
+                    ? permissionRepository.findByOrganizationIdInAndStatus(
+                            organizationIds, PermissionStatus.valueOf(status), Pageable.unpaged()).getContent()
+                    : permissionRepository.findByOrganizationIdIn(organizationIds, Pageable.unpaged()).getContent();
+        } else {
+            UUID orgId = organizationId != null ? organizationId : TenantContext.getRequiredOrgId();
+            permissions = status != null
+                    ? permissionRepository.findByOrganizationIdAndStatus(
+                            orgId, PermissionStatus.valueOf(status), Pageable.unpaged()).getContent()
+                    : permissionRepository.findByOrganizationId(orgId, Pageable.unpaged()).getContent();
+        }
+
+        try {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            CSVFormat format = CSVFormat.DEFAULT.builder()
+                    .setHeader("id", "name", "resource", "action", "status",
+                            "description", "organizationId", "createdAt", "updatedAt")
+                    .build();
+            try (CSVPrinter printer = new CSVPrinter(new OutputStreamWriter(out, StandardCharsets.UTF_8), format)) {
+                for (Permission p : permissions) {
+                    printer.printRecord(
+                            p.getId(),
+                            p.getName(),
+                            p.getResource(),
+                            p.getAction(),
+                            p.getStatus() != null ? p.getStatus().name() : "",
+                            p.getDescription() != null ? p.getDescription() : "",
+                            p.getOrganization() != null ? p.getOrganization().getId() : "",
+                            p.getCreatedAt(),
+                            p.getUpdatedAt()
+                    );
+                }
+            }
+            return out.toByteArray();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to generate permissions CSV", e);
+        }
     }
 
     // ─── LIFECYCLE TRANSITION ────────────────────────────────────────────────
