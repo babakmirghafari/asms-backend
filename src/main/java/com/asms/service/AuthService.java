@@ -3,6 +3,7 @@ package com.asms.service;
 import com.asms.config.AsmsSecurityProperties;
 import com.asms.constant.AuditActions;
 import com.asms.domain.Membership;
+import com.asms.domain.Organization;
 import com.asms.domain.User;
 import com.asms.domain.enums.MembershipStatus;
 import com.asms.domain.enums.UserRole;
@@ -69,6 +70,34 @@ public class AuthService {
      * Result of a successful org selection — carries an access token and expiry.
      */
     public record OrgSelectionResult(String accessToken, int expiresInSeconds) {}
+
+    /**
+     * Slim organisation view returned by the pre-auth /auth/orgs endpoint.
+     */
+    public record OrgEntry(String id, String name, String slug, String domain,
+                           int memberCount, String plan) {}
+
+    /**
+     * Returns the active organisations the user identified by {@code sessionToken} belongs to.
+     * The sessionToken is the user's UUID, issued by the login handler before a JWT exists.
+     */
+    @Transactional(readOnly = true)
+    public List<OrgEntry> getOrgsForUser(UUID userId) {
+        List<Membership> memberships = membershipRepository.findByUserIdWithOrg(userId);
+        return memberships.stream()
+                .filter(m -> m.getStatus() != MembershipStatus.REMOVED)
+                .map(m -> {
+                    Organization org = m.getOrganization();
+                    return new OrgEntry(
+                            org.getId().toString(),
+                            org.getName() != null ? org.getName() : "",
+                            org.getSlug() != null ? org.getSlug() : "",
+                            org.getDomain() != null ? org.getDomain() : "",
+                            org.getMemberCount(),
+                            org.getPlan() != null ? org.getPlan().name() : "");
+                })
+                .toList();
+    }
 
     /**
      * Authenticates the user, enforces lockout, and verifies the password with BCrypt.
